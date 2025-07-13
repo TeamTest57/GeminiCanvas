@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XYZタイル緯度経度・座標変換ツール</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+        }
+        .copy-btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .copy-btn:active {
+            transform: scale(0.95);
+        }
+        .copied-feedback {
+            transition: opacity 0.5s ease-in-out;
+        }
+        .section-divider {
+            border-color: #e5e7eb; /* gray-200 */
+        }
+        .dark .section-divider {
+            border-color: #4b5563; /* gray-600 */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-2xl bg-white dark:bg-gray-800 shadow-2xl rounded-2xl p-6 md:p-8">
+        <div class="text-center mb-6">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">XYZタイル緯度経度・座標変換ツール</h1>
+            <p class="text-gray-600 dark:text-gray-400 mt-2">タイル座標と緯度経度の相互変換を行います。</p>
+        </div>
+
+        <!-- Section 1: Tile to LatLon -->
+        <div class="mb-8">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">タイル座標 → 緯度経度</h2>
+            <!-- Input Section -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div>
+                    <label for="z" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ズーム (Z)</label>
+                    <input type="number" id="z" value="5" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                </div>
+                <div>
+                    <label for="x" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">X座標</label>
+                    <input type="number" id="x" value="28" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                </div>
+                <div>
+                    <label for="y" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Y座標</label>
+                    <input type="number" id="y" value="10" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                </div>
+            </div>
+
+            <!-- Action Button -->
+            <div class="text-center mb-6">
+                <button id="calculateBtn" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-md hover:shadow-lg transition-transform transform hover:scale-105">
+                    範囲を計算
+                </button>
+            </div>
+
+            <!-- Output Section -->
+            <div id="output" class="hidden space-y-4">
+                <div>
+                    <h3 class="font-semibold text-lg text-gray-800 dark:text-gray-200 mb-2">左上の座標</h3>
+                    <div class="flex items-center bg-gray-100 dark:bg-gray-700 p-3 rounded-lg">
+                        <input type="text" id="topLeft" readonly class="flex-grow bg-transparent outline-none text-gray-900 dark:text-white font-mono">
+                        <button onclick="copyToClipboard('topLeft')" class="copy-btn ml-4 p-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 rounded-md" aria-label="左上の座標をコピー">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-lg text-gray-800 dark:text-gray-200 mb-2">右下の座標</h3>
+                    <div class="flex items-center bg-gray-100 dark:bg-gray-700 p-3 rounded-lg">
+                        <input type="text" id="bottomRight" readonly class="flex-grow bg-transparent outline-none text-gray-900 dark:text-white font-mono">
+                        <button onclick="copyToClipboard('bottomRight')" class="copy-btn ml-4 p-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 rounded-md" aria-label="右下の座標をコピー">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <hr class="my-8 border-t-2 section-divider rounded-full">
+
+        <!-- Section 2: LatLon to Pixel -->
+        <div class="mb-8">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">緯度経度 → タイル内ピクセル座標</h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">上のタイル範囲内にある特定の緯度経度が、画像上のどのピクセルに対応するかを計算します。</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                 <div>
+                    <label for="lat" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">緯度</label>
+                    <input type="number" id="lat" step="any" placeholder="例: 35.0116" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                </div>
+                <div>
+                    <label for="lon" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">経度</label>
+                    <input type="number" id="lon" step="any" placeholder="例: 135.7681" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                </div>
+                 <div>
+                    <label for="imgWidth" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">画像幅 (px)</label>
+                    <input type="number" id="imgWidth" value="8192" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                </div>
+                <div>
+                    <label for="imgHeight" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">画像高さ (px)</label>
+                    <input type="number" id="imgHeight" value="8192" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                </div>
+            </div>
+            <div class="text-center my-6">
+                <button id="pixelCalculateBtn" class="w-full md:w-auto bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-8 rounded-lg shadow-md hover:shadow-lg transition-transform transform hover:scale-105">
+                    ピクセル座標を計算
+                </button>
+            </div>
+            <div id="pixelOutput" class="text-center p-4 bg-gray-100 dark:bg-gray-700 rounded-lg min-h-[60px] flex items-center justify-center">
+                <span class="text-gray-500 dark:text-gray-400">緯度経度などを入力してください</span>
+            </div>
+        </div>
+
+        <hr class="my-8 border-t-2 section-divider rounded-full">
+
+        <!-- Section 3: Pixel to LatLon -->
+        <div>
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">タイル内ピクセル座標 → 緯度経度</h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">上のタイル範囲と画像サイズを基に、ピクセル座標が示す緯度経度を計算します。</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                 <div>
+                    <label for="pixelX" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ピクセルX座標</label>
+                    <input type="number" id="pixelX" step="any" placeholder="例: 4096" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition">
+                </div>
+                <div>
+                    <label for="pixelY" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ピクセルY座標</label>
+                    <input type="number" id="pixelY" step="any" placeholder="例: 4096" class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition">
+                </div>
+            </div>
+            <div class="text-center my-6">
+                <button id="latlonCalculateBtn" class="w-full md:w-auto bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-lg shadow-md hover:shadow-lg transition-transform transform hover:scale-105">
+                    緯度経度を計算
+                </button>
+            </div>
+            <div id="latlonOutput" class="text-center p-4 bg-gray-100 dark:bg-gray-700 rounded-lg min-h-[60px] flex items-center justify-center">
+                <span class="text-gray-500 dark:text-gray-400">ピクセル座標を入力してください</span>
+            </div>
+        </div>
+
+        <!-- Feedback Message -->
+        <div id="feedback" class="fixed bottom-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg opacity-0 copied-feedback">
+            コピーしました！
+        </div>
+
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const zInput = document.getElementById('z');
+        const xInput = document.getElementById('x');
+        const yInput = document.getElementById('y');
+        const calculateBtn = document.getElementById('calculateBtn');
+        const outputDiv = document.getElementById('output');
+        const topLeftInput = document.getElementById('topLeft');
+        const bottomRightInput = document.getElementById('bottomRight');
+        
+        const latInput = document.getElementById('lat');
+        const lonInput = document.getElementById('lon');
+        const imgWidthInput = document.getElementById('imgWidth');
+        const imgHeightInput = document.getElementById('imgHeight');
+        const pixelCalculateBtn = document.getElementById('pixelCalculateBtn');
+        const pixelOutputDiv = document.getElementById('pixelOutput');
+
+        const pixelXInput = document.getElementById('pixelX');
+        const pixelYInput = document.getElementById('pixelY');
+        const latlonCalculateBtn = document.getElementById('latlonCalculateBtn');
+        const latlonOutputDiv = document.getElementById('latlonOutput');
+
+        const feedbackDiv = document.getElementById('feedback');
+
+        // --- Tile Calculation Functions ---
+
+        /**
+         * Converts tile X (can be fractional) and zoom level to longitude.
+         * @param {number} x The X coordinate of the tile.
+         * @param {number} z The zoom level.
+         * @returns {number} The longitude.
+         */
+        function tile2long(x, z) {
+            return (x / Math.pow(2, z)) * 360 - 180;
+        }
+
+        /**
+         * Converts tile Y (can be fractional) and zoom level to latitude.
+         * @param {number} y The Y coordinate of the tile.
+         * @param {number} z The zoom level.
+         * @returns {number} The latitude.
+         */
+        function tile2lat(y, z) {
+            const n = Math.PI - (2 * Math.PI * y) / Math.pow(2, z);
+            return (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+        }
+
+        /**
+         * Converts longitude and zoom level to a fractional tile X coordinate.
+         * @param {number} lon The longitude.
+         * @param {number} z The zoom level.
+         * @returns {number} The fractional tile X coordinate.
+         */
+        function long2tile(lon, z) {
+            return ((lon + 180) / 360) * Math.pow(2, z);
+        }
+
+        /**
+         * Converts latitude and zoom level to a fractional tile Y coordinate.
+         * @param {number} lat The latitude.
+         * @param {number} z The zoom level.
+         * @returns {number} The fractional tile Y coordinate.
+         */
+        function lat2tile(lat, z) {
+            const latRad = lat * Math.PI / 180;
+            return (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * Math.pow(2, z);
+        }
+
+        // --- Event Listeners ---
+        calculateBtn.addEventListener('click', calculateAndDisplayTileBounds);
+        window.addEventListener('load', calculateAndDisplayTileBounds);
+        pixelCalculateBtn.addEventListener('click', calculatePixelPosition);
+        latlonCalculateBtn.addEventListener('click', calculateLatLonFromPixel);
+
+        // --- Core Logic Functions ---
+
+        /**
+         * Calculates and displays the latitude/longitude boundaries of the tile.
+         */
+        function calculateAndDisplayTileBounds() {
+            const z = parseInt(zInput.value, 10);
+            const x = parseInt(xInput.value, 10);
+            const y = parseInt(yInput.value, 10);
+
+            if (isNaN(z) || isNaN(x) || isNaN(y)) {
+                // Use alert for critical input errors in the first section
+                alert('Z, X, Y すべてに数値を入力してください。');
+                return;
+            }
+            
+            const lon1 = tile2long(x, z);
+            const lat1 = tile2lat(y, z);
+            const lon2 = tile2long(x + 1, z);
+            const lat2 = tile2lat(y + 1, z);
+
+            topLeftInput.value = `緯度: ${lat1.toFixed(6)}, 経度: ${lon1.toFixed(6)}`;
+            bottomRightInput.value = `緯度: ${lat2.toFixed(6)}, 経度: ${lon2.toFixed(6)}`;
+
+            outputDiv.classList.remove('hidden');
+        }
+
+        /**
+         * Calculates the pixel position of a lat/lon coordinate within the current tile.
+         */
+        function calculatePixelPosition() {
+            const z = parseInt(zInput.value, 10);
+            const x = parseInt(xInput.value, 10);
+            const y = parseInt(yInput.value, 10);
+            
+            const lat = parseFloat(latInput.value);
+            const lon = parseFloat(lonInput.value);
+            const imgWidth = parseFloat(imgWidthInput.value);
+            const imgHeight = parseFloat(imgHeightInput.value);
+
+            if (isNaN(lat) || isNaN(lon) || isNaN(imgWidth) || isNaN(imgHeight)) {
+                pixelOutputDiv.innerHTML = `<span class="text-red-500">緯度、経度、画像サイズをすべて入力してください。</span>`;
+                return;
+            }
+
+            const fracX = long2tile(lon, z);
+            const fracY = lat2tile(lat, z);
+
+            const tileX = Math.floor(fracX);
+            const tileY = Math.floor(fracY);
+
+            if (tileX !== x || tileY !== y) {
+                pixelOutputDiv.innerHTML = `<span class="text-orange-500">指定された座標は、上のタイル(Z:${z}, X:${x}, Y:${y})の範囲外です。</span><br><span class="text-sm text-gray-400">(計算上のタイル: X:${tileX}, Y:${tileY})</span>`;
+                return;
+            }
+
+            const relativeX = fracX - tileX;
+            const relativeY = fracY - tileY;
+
+            const pixelX = relativeX * imgWidth;
+            const pixelY = relativeY * imgHeight;
+
+            pixelOutputDiv.innerHTML = `<span class="font-mono text-gray-800 dark:text-white">ピクセル座標: X = ${pixelX.toFixed(2)}, Y = ${pixelY.toFixed(2)}</span>`;
+        }
+
+        /**
+         * Calculates the lat/lon from a pixel coordinate within the current tile.
+         */
+        function calculateLatLonFromPixel() {
+            const z = parseInt(zInput.value, 10);
+            const x = parseInt(xInput.value, 10);
+            const y = parseInt(yInput.value, 10);
+            
+            const imgWidth = parseFloat(imgWidthInput.value);
+            const imgHeight = parseFloat(imgHeightInput.value);
+            const pixelX = parseFloat(pixelXInput.value);
+            const pixelY = parseFloat(pixelYInput.value);
+
+            if (isNaN(z) || isNaN(x) || isNaN(y) || isNaN(imgWidth) || isNaN(imgHeight) || isNaN(pixelX) || isNaN(pixelY)) {
+                latlonOutputDiv.innerHTML = `<span class="text-red-500">必須項目（Z,X,Y,画像サイズ,ピクセル座標）をすべて入力してください。</span>`;
+                return;
+            }
+
+            // Calculate the fractional tile coordinate based on the pixel position
+            const relativeX = pixelX / imgWidth;
+            const relativeY = pixelY / imgHeight;
+
+            const fracX = x + relativeX;
+            const fracY = y + relativeY;
+
+            // Convert the fractional tile coordinate to lat/lon
+            const lon = tile2long(fracX, z);
+            const lat = tile2lat(fracY, z);
+
+            latlonOutputDiv.innerHTML = `<span class="font-mono text-gray-800 dark:text-white">緯度: ${lat.toFixed(6)}, 経度: ${lon.toFixed(6)}</span>`;
+        }
+
+
+        // --- Utility Functions ---
+
+        /**
+         * Copies the content of a specified input field to the clipboard.
+         * @param {string} elementId The ID of the input element to copy from.
+         */
+        function copyToClipboard(elementId) {
+            const inputElement = document.getElementById(elementId);
+            if (!inputElement || !inputElement.value) return;
+
+            const textarea = document.createElement('textarea');
+            textarea.value = inputElement.value;
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showFeedback();
+            } catch (err) {
+                console.error('クリップボードへのコピーに失敗しました:', err);
+                alert('コピーに失敗しました。');
+            }
+            document.body.removeChild(textarea);
+        }
+        
+        let feedbackTimeout;
+        /**
+         * Shows a temporary feedback message.
+         */
+        function showFeedback() {
+            clearTimeout(feedbackTimeout);
+            feedbackDiv.classList.remove('opacity-0');
+            feedbackTimeout = setTimeout(() => {
+                feedbackDiv.classList.add('opacity-0');
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
