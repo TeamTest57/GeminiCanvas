@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wiktionary Luaモジュール変換ツール</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">Wiktionary Luaモジュール変換ツール</h1>
+            <p class="mt-2 text-gray-600">タブ区切りのデータをLuaモジュール形式に変換します。</p>
+        </header>
+
+        <main class="bg-white rounded-xl shadow-lg p-6 md:p-8 space-y-6">
+            <div>
+                <label for="inputText" class="block text-lg font-semibold mb-2 text-gray-700">1. タブ区切りテキストを入力</label>
+                <textarea id="inputText" rows="15" class="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200" placeholder="ここにタブ区切りのテキストを貼り付けてください..."></textarea>
+            </div>
+
+            <div class="text-center">
+                <button id="convertButton" class="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-transform transform hover:scale-105 duration-300 ease-in-out">
+                    手動で変換
+                </button>
+            </div>
+
+            <div>
+                <label for="outputText" class="block text-lg font-semibold mb-2 text-gray-700">2. 生成されたLuaコード</label>
+                <div class="relative">
+                    <textarea id="outputText" rows="15" class="w-full p-4 border border-gray-300 rounded-lg bg-gray-50 font-mono text-sm readonly" readonly placeholder="ここに変換結果が出力されます..."></textarea>
+                    <button id="copyButton" class="absolute top-3 right-3 bg-gray-200 text-gray-700 px-3 py-1 rounded-md text-sm hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 transition">
+                        コピー
+                    </button>
+                </div>
+            </div>
+        </main>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const inputText = document.getElementById('inputText');
+            const outputText = document.getElementById('outputText');
+            const convertButton = document.getElementById('convertButton');
+            const copyButton = document.getElementById('copyButton');
+
+            // ユーザーが提供したサンプルデータを初期値として設定
+            inputText.value = `guts, intestines\tはらわた\t\t
+englishName\tjapaneseName\tid\tdata
+Yakumo\t八雲\t1\ttúy
+Oshamambe\t長万部\t2\ttúy
+Horobetsu\t幌別\t3\ttúy;'óske'op
+Biratori\t平取\t4\t'óssike'op;kánkan
+Nukkibetsu\t貫気別\t5\ttúy;kánkan
+Niikappu\t新冠\t6\ttuyórop
+Samani\t様似\t7\tcuy(肝臓など);kankan(腸)
+Obihiro\t帯広\t8\ttúy;kánkan
+Kushiro\t釧路\t9\t'oske;tuy(小腸);tuy
+Bihoro\t美幌\t10\tanetuy(-e);ruwetuy(-e);'oske(腹の中);tuy(動物の腸)
+Asahikawa\t旭川\t11\t'óske;túy(小腸)
+Nayoro\t名寄\t12\t'óske;túy
+Soya\t宗谷\t13\ttúy(熊の);tuykonpy(鮭;人間)
+Ochiho\t落帆\t14\tramoro
+Tarantomari\t多蘭泊\t15\ttuworop;ramoro(腸)
+Maoka\t真岡\t16\ttuyoroh;ramoro(腸)
+Shiraura\t白浦\t17\thanuka;motuy(-he);pisehanuka;ramoro;ramoroaraka;siotuy(-he);cuporoh;tuyoroh
+Raichishka\tライチシカ\t18\tonuuman (tookes のあと);tuyoroh;cuporoh[老]
+Nairo\t内路\t19\tramoro
+Saru\t沙流\t20\tanekankan(-i);anetuy(-e);ruwekankan(-i);ruwetuy(-e)
+Kuril\t千島\t21\t
+Shumshu\t占守\t22\tkankan;shuma
+Paramushir\t幌筵\t23\t
+SouthKuril\t南千島\t24\t
+Yamambetsu\t弥満別\t25\t
+Shirahama\t白浜\t26\tčúporoh;ramor;ramorokay;tamoro;tuy;ramor
+Niitoi\t新問\t27\t
+Taraika\t多来加\t28\t
+Chirai\t智来\t29\t
+Usoro\t鵜城\t30\thanuka;siotuyramoro;tuyhecinoypa
+Nemuro\t根室\t31\t
+Chitose\t千歳\t32\t
+Kussharo\t屈斜路\t33\t
+Chikabumi\t近文\t34\tceptuy(-e);tuypise
+Hobetsu\t穂別\t35\t
+Rebun\t礼文\t36\t
+Ashoro\t足寄\t37\t
+Teshio\t天塩\t38\tanetuy(-e);ruwetuy(-e)
+Abuta\t虻田\t39\t
+Shiraoi\t白老\t40\t
+Tonnai\t富内\t41\t
+Harutori\t春採\t42\tyospe
+Tokachi\t十勝\t43\t
+Mukawa\t鵡川\t44\t
+Usu\t有珠\t45\t
+Shiranuka\t白糠\t46\t
+Shizunai\t静内\t47\t
+Hidaka\t日高\t48\t
+Nijibetsu\t虹別\t49\t
+Ogifushi\t荻伏\t50\t
+Urakawa\t浦河\t51\t
+Shari\t斜里\t52\tanekankan(-i);onnekankan(-i)
+Akan\t阿寒\t53\t
+Fushiko\t伏古\t54\tcituykocap(-i)
+Azuma\t厚真\t55\t
+Kitami\t北見\t56\t
+Abashiri\t網走\t57\t
+Muroran\t室蘭\t58\t
+Shiranushi\t白主\t59\t
+Takashima\t高島\t60\t
+Biroo\t広尾\t61\t
+Aihama\t相浜\t62\t
+Memuro\t芽室\t63\t
+Tooro\t塘路\t64\tyospe
+Fupushinai\t布伏内\t65\t
+Ebeotsu\t江部乙\t66\t
+Hagino\t萩野\t67\t
+Chirotto\t白人\t68\t
+Horoman\t幌満\t69\t
+Etorofu\t択捉\t70\t
+Otofuke\t音更\t71\t
+Takae\t高江\t72\t
+Mitsuishi\t三石\t73\t
+Mokoto\t藻琴\t74\t
+Toyoura\t豊浦\t75\t`;
+
+            // Luaのテンプレート
+            const luaTemplate = `local export = {}
+
+export.gloss = ""
+
+export.syns = {
+	-- Hokkaido: Southern/Central
+	["Abuta"]	= { "" },
+	["Azuma"]	= { "" },
+	["Biratori"]	= { "" },
+	["Chitose"]	= { "" },
+	["Ebeotsu"]	= { "" },
+	["Hagino"]	= { "" },
+	["Hidaka"]	= { "" },
+	["Hobetsu"]	= { "" },
+	["Horobetsu"]	= { "" },
+	["Horoman"]	= { "" },
+	["Mitsuishi"]	= { "" },
+	["Mukawa"]	= { "" },
+	["Muroran"]	= { "" },
+	["Niikappu"]	= { "" },
+	["Nukkibetsu"]	= { "" },
+	["Ogifushi"]	= { "" },
+	["Oshamambe"]	= { "" },
+	["Rebun"]	= { "" },
+	["Samani"]	= { "" },
+	["Saru"]	= { "" },
+	["Shiraoi"]	= { "" },
+	["Shizunai"]	= { "" },
+	["Takae"]	= { "" },
+	["Takashima"]	= { "" },
+	["Toyoura"]	= { "" },
+	["Urakawa"]	= { "" },
+	["Usu"]	= { "" },
+	["Yakumo"]	= { "" },
+
+	-- Hokkaido: Northern
+	["Asahikawa"]	= { "" },
+	["Chikabumi"]	= { "" },
+	["Nayoro"]	= { "" },
+	["Soya"]	= { "" },
+	["Teshio"]	= { "" },
+
+	-- Hokkaido: Eastern
+	["Abashiri"]	= { "" },
+	["Akan"]	= { "" },
+	["Ashoro"]	= { "" },
+	["Bihoro"]	= { "" },
+	["Biroo"]	= { "" },
+	["Chirotto"]	= { "" },
+	["Fupushinai"]	= { "" },
+	["Fushiko"]	= { "" },
+	["Harutori"]	= { "" },
+	["Kitami"]	= { "" },
+	["Kushiro"]	= { "" },
+	["Kussharo"]	= { "" },
+	["Memuro"]	= { "" },
+	["Mokoto"]	= { "" },
+	["Nemuro"]	= { "" },
+	["Nijibetsu"]	= { "" },
+	["Obihiro"]	= { "" },
+	["Otofuke"]	= { "" },
+	["Shari"]	= { "" },
+	["Shiranuka"]	= { "" },
+	["Tokachi"]	= { "" },
+	["Tooro"]	= { "" },
+
+	-- Sakhalin: West Coast
+	["Chirai"]	= { "" },
+	["Maoka"]	= { "" },
+	["Raichishka"]	= { "" },
+	["Shiranushi"]	= { "" },
+	["Tarantomari"]	= { "" },
+	["Usoro"]	= { "" },
+
+	-- Sakhalin: East Coast
+	["Aihama"]	= { "" },
+	["Nairo"]	= { "" },
+	["Niitoi"]	= { "" },
+	["Ochiho"]	= { "" },
+	["Shirahama"]	= { "" },
+	["Shiraura"]	= { "" },
+	["Taraika"]	= { "" },
+	["Tonnai"]	= { "" },
+	["Yamambetsu"]	= { "" },
+
+	-- Kuril: Northern
+	["Kuril"]	= { "" },
+	["Paramushir"]	= { "" },
+	["Shumshu"]	= { "" },
+
+	-- Kuril: Southern
+	["Etorofu"]	= { "" },
+	["SouthKuril"]	= { "" },
+}
+
+return export`;
+
+            /**
+             * Parses the Lua template to create a map of locations to their regions.
+             * This version is more robust, parsing line by line to capture sub-regions.
+             * @param {string} template - The Lua template string.
+             * @returns {Map<string, string>} A map where key is location and value is region.
+             */
+            function createRegionMap(template) {
+                const regionMap = new Map();
+                let currentRegion = 'Unknown';
+                const lines = template.split('\n');
+
+                for (const line of lines) {
+                    const trimmedLine = line.trim();
+                    
+                    if (trimmedLine.startsWith('--')) {
+                        const regionMatch = trimmedLine.match(/-- (.*)/);
+                        if (regionMatch && regionMatch[1]) {
+                            currentRegion = regionMatch[1].trim();
+                        }
+                    } else if (trimmedLine.startsWith('["')) {
+                        const locationMatch = trimmedLine.match(/\["(.*?)"\]/);
+                        if (locationMatch && locationMatch[1]) {
+                            regionMap.set(locationMatch[1], currentRegion);
+                        }
+                    }
+                }
+                return regionMap;
+            }
+            
+            const regionMap = createRegionMap(luaTemplate);
+
+            /**
+             * Splits a string by semicolons, ignoring those inside parentheses/brackets.
+             * @param {string} str - The string to split.
+             * @returns {string[]} An array of split strings.
+             */
+            function splitPronunciations(str) {
+                const result = [];
+                let current = '';
+                let parenDepth = 0;
+                for (const char of str) {
+                    if (char === '(' || char === '[' || char === '≪' || char === '（') {
+                        parenDepth++;
+                    } else if (char === ')' || char === ']' || char === '≫' || char === '）') {
+                        parenDepth = Math.max(0, parenDepth - 1);
+                    }
+
+                    if (char === ';' && parenDepth === 0) {
+                        if (current.trim()) {
+                            result.push(current.trim());
+                        }
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                if (current.trim()) {
+                    result.push(current.trim());
+                }
+                return result;
+            }
+
+            /**
+             * Converts Ainu romanization to Katakana based on specified rules and region.
+             * @param {string} rawStr - The raw pronunciation string.
+             * @param {string} region - The region string (e.g., "Hokkaido: Northern", "Kuril: Northern").
+             * @returns {{katakana: string, original: string}} An object with the converted Katakana and the original string.
+             */
+            function getKatakanaConversion(rawStr, region) {
+                if (!rawStr || !rawStr.trim()) return { katakana: '', original: rawStr };
+
+                let s = rawStr.split(',')[0];
+                s = s.replace(/[\(（≪\[].*?[\)）≫\]]/g, '');
+                if (!s.trim()) return { katakana: '', original: rawStr };
+
+                s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                s = s.replace(/č/g, 'c');
+                s = s.toLowerCase();
+                s = s.replace(/[ '.]/g, '');
+                if (!s) return { katakana: '', original: rawStr };
+                
+                const syllableMap = {
+                    'si': 'シ', 'ci': 'チ', 'cu': 'チュ', 'ca': 'チャ', 'ce': 'チェ', 'co': 'チョ', 'tu': 'トゥ',
+                    'ka': 'カ', 'ki': 'キ', 'ku': 'ク', 'ke': 'ケ', 'ko': 'コ', 'sa': 'サ', 'su': 'ス', 'se': 'セ', 'so': 'ソ',
+                    'ta': 'タ', 'te': 'テ', 'to': 'ト', 'na': 'ナ', 'ni': 'ニ', 'nu': 'ヌ', 'ne': 'ネ', 'no': 'ノ',
+                    'ha': 'ハ', 'hi': 'ヒ', 'hu': 'フ', 'he': 'ヘ', 'ho': 'ホ', 'ma': 'マ', 'mi': 'ミ', 'mu': 'ム', 'me': 'メ', 'mo': 'モ',
+                    'ya': 'ヤ', 'yu': 'ユ', 'yo': 'ヨ', 'ye': 'イェ',
+                    'ra': 'ラ', 'ri': 'リ', 'ru': 'ル', 're': 'レ', 'ro': 'ロ',
+                    'wa': 'ワ', 'wi': 'ウィ', 'we': 'ウェ', 'wo': 'ヲ', 'pa': 'パ', 'pi': 'ピ', 'pu': 'プ', 'pe': 'ペ', 'po': 'ポ'
+                };
+                const kurilNorthernSyllableMap = {
+                    'sha': 'シャ', 'shu': 'シュ', 'sho': 'ショ',
+                    'cha': 'チャ', 'chu': 'チュ', 'cho': 'チョ'
+                };
+                const vowelMap = {a: 'ア', i: 'イ', u: 'ウ', e: 'エ', o: 'オ'};
+                const vowels = 'aiueo';
+                
+                let katakana = '';
+                let i = 0;
+                while (i < s.length) {
+                    let consumed = false;
+
+                    // 1. Check for 3-char Kuril Northern syllables
+                    if (region === 'Kuril: Northern' && i + 2 < s.length) {
+                        const threeChar = s.substring(i, i + 3);
+                        if (kurilNorthernSyllableMap[threeChar]) {
+                            katakana += kurilNorthernSyllableMap[threeChar];
+                            i += 3;
+                            consumed = true;
+                        }
+                    }
+                    if (consumed) continue;
+
+                    // 2. Check for 2-char general syllables
+                    if (i + 1 < s.length) {
+                        const twoChar = s.substring(i, i + 2);
+                        if (syllableMap[twoChar]) {
+                            katakana += syllableMap[twoChar];
+                            i += 2;
+                            consumed = true;
+                        }
+                    }
+                    if (consumed) continue;
+
+                    // 3. Check for long vowels
+                    if (i + 1 < s.length && s[i] === s[i+1] && vowels.includes(s[i])) {
+                        const baseVowel = vowelMap[s[i]];
+                        if (region.startsWith('Hokkaido')) {
+                             katakana += baseVowel + baseVowel;
+                        } else {
+                             katakana += baseVowel + 'ー';
+                        }
+                        i += 2;
+                        consumed = true;
+                    }
+                    if (consumed) continue;
+                    
+                    // 4. Check for single vowels
+                    if (vowels.includes(s[i])) {
+                        katakana += vowelMap[s[i]];
+                        i++;
+                        consumed = true;
+                    }
+                    if (consumed) continue;
+
+                    // 5. Check for final consonants
+                    const finalConsonantMap = {
+                        't': 'ッ', 'p': 'ㇷ゚', 'k': 'ㇰ', 's': 'ㇱ', 'm': 'ㇺ',
+                        'h': {'a':'ㇵ', 'i':'ㇶ', 'u':'ㇷ', 'e':'ㇸ', 'o':'ㇹ'},
+                        'r': {'a':'ㇻ', 'i':'ㇼ', 'u':'ㇽ', 'e':'ㇾ', 'o':'ㇿ'}
+                    };
+                    if (finalConsonantMap[s[i]]) {
+                        if (s[i] === 'n') katakana += 'ン';
+                        else if (s[i] === 'y') katakana += 'イ';
+                        else if (s[i] === 'w') katakana += 'ウ';
+                        else if (typeof finalConsonantMap[s[i]] === 'object') {
+                            // This part is tricky as we don't track last vowel perfectly with this new logic
+                            // but we can make a reasonable guess. For now, defaulting.
+                            katakana += Object.values(finalConsonantMap[s[i]])[0];
+                        } else {
+                            katakana += finalConsonantMap[s[i]];
+                        }
+                        i++;
+                        consumed = true;
+                    }
+                    if (consumed) continue;
+
+                    // Fallback for unhandled characters
+                    if (!consumed) {
+                        i++;
+                    }
+                }
+                return { katakana, original: rawStr };
+            }
+            
+            /**
+             * Main function to perform the conversion.
+             */
+            function performConversion() {
+                const text = inputText.value.trim();
+                let output = luaTemplate;
+
+                if (!text) {
+                    outputText.value = output; // Reset to template if input is empty
+                    return;
+                }
+
+                const lines = text.split('\n');
+                let dataStartIndex = 0;
+
+                const firstLine = lines[0].trim();
+                const isFirstLineHeader = firstLine.split('\t')[0] === 'englishName';
+
+                if (isFirstLineHeader) {
+                    dataStartIndex = 1;
+                } else {
+                    const glossLine = lines[0];
+                    if (glossLine) {
+                        const glossParts = glossLine.split('\t');
+                        const englishGloss = glossParts[0] || "";
+                        output = output.replace(`export.gloss = ""`, `export.gloss = "${englishGloss.replace(/"/g, '\\"')}"`);
+                    }
+                    dataStartIndex = 2;
+                }
+
+                const pronunciationData = new Map();
+                for (let i = dataStartIndex; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (!line) continue;
+                    const parts = line.split('\t');
+                    if (parts.length < 4) continue;
+                    const englishName = parts[0];
+                    const pronunciations = parts[3];
+                    if (englishName && englishName !== 'englishName') {
+                        pronunciationData.set(englishName, pronunciations);
+                    }
+                }
+
+                pronunciationData.forEach((pronunciations, englishName) => {
+                    const region = regionMap.get(englishName) || 'Unknown';
+                    let luaValue;
+                    if (!pronunciations || pronunciations.trim() === '') {
+                        luaValue = '{ "" }';
+                    } else {
+                        const rawItems = splitPronunciations(pronunciations);
+
+                        const katakanaGroups = new Map();
+                        for (const item of rawItems) {
+                            const { katakana } = getKatakanaConversion(item, region);
+                            if (!katakana) continue;
+                            if (!katakanaGroups.has(katakana)) {
+                                katakanaGroups.set(katakana, []);
+                            }
+                            katakanaGroups.get(katakana).push(item);
+                        }
+
+                        const finalPronunciations = [];
+                        for (const group of katakanaGroups.values()) {
+                            if (group.length === 1) {
+                                finalPronunciations.push(group[0]);
+                            } else {
+                                const getPriority = (str) => {
+                                    if (/[úóáéí]/.test(str)) return 1; // 1. Accent
+                                    if (/[一-龠ぁ-んァ-ヶ]/.test(str)) return 2; // 2. Japanese
+                                    if (/, -/.test(str)) return 3; // 3. ", -"
+                                    return 4; // Default
+                                };
+                                const best = group.sort((a, b) => getPriority(a) - getPriority(b))[0];
+                                finalPronunciations.push(best);
+                            }
+                        }
+
+                        const items = finalPronunciations.map(p => {
+                            const { katakana, original } = getKatakanaConversion(p, region);
+                            const formatted = katakana ? `${katakana}:${original}` : original;
+                            return `"${formatted.replace(/"/g, '\\"')}"`;
+                        });
+
+                        if (items.length > 0) {
+                            luaValue = `{ ${items.join(", ")} }`;
+                        } else {
+                            luaValue = '{ "" }';
+                        }
+                    }
+
+                    const searchRegex = new RegExp(`(\\["${englishName}"\\]\\s*=\\s*){[^}]*}`);
+                    const replacement = `["${englishName}"]\t= ${luaValue}`;
+                    
+                    if (output.match(searchRegex)) {
+                        output = output.replace(searchRegex, replacement);
+                    }
+                });
+
+                outputText.value = output;
+            }
+
+            // --- Event Listeners ---
+            
+            // Perform conversion automatically on input/paste
+            inputText.addEventListener('input', performConversion);
+            
+            // Also keep the button for manual conversion
+            convertButton.addEventListener('click', performConversion);
+
+            copyButton.addEventListener('click', () => {
+                if (!outputText.value) return;
+                const textArea = document.createElement("textarea");
+                textArea.value = outputText.value;
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                } catch (err) {
+                    console.error('Copy failed', err);
+                }
+                document.body.removeChild(textArea);
+            });
+            
+            // Initial conversion on page load with sample data
+            performConversion();
+        });
+    </script>
+</body>
+</html>
