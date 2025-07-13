@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ニヴフ語方言地図SVGジェネレーター</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans JP', 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        .prose h2 {
+            font-size: 1.125rem;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .prose h3 {
+            font-size: 1rem;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        .prose input[type="text"], .prose input[type="number"], .prose textarea {
+            width: 100%;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            border: 1px solid #d1d5db;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .prose input:focus, .prose textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.4);
+        }
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .btn-blue {
+            background-color: #3b82f6;
+        }
+        .btn-blue:hover {
+            background-color: #2563eb;
+        }
+        #lang-selector {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpath d='M6 9l6 6 6-6'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 0.5rem center;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem;
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="container mx-auto p-4 lg:p-6">
+        <header class="relative text-center mb-6">
+            <div class="absolute top-0 right-0">
+                <select id="lang-selector" class="bg-white border border-gray-300 text-gray-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                    <option value="ja">日本語</option>
+                    <option value="en">English</option>
+                    <option value="zh">中文</option>
+                    <option value="ko">한국어</option>
+                    <option value="ru">Русский</option>
+                </select>
+            </div>
+            <h1 data-lang-key="appTitle" class="text-2xl lg:text-3xl font-bold text-gray-900">ニヴフ語方言地図SVGジェネレーター</h1>
+            <p data-lang-key="appSubtitle" class="text-gray-600 mt-2">各種データを入力または編集して、ニヴフ語方言地図を生成します。</p>
+        </header>
+
+        <!-- 上段：設定とプレビュー -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
+            <!-- 設定パネル -->
+            <div class="lg:col-span-4 bg-white p-6 rounded-xl shadow-lg prose prose-sm max-w-none">
+                <div class="mb-6">
+                    <h2 data-lang-key="section1Title">1. 基本設定</h2>
+                    <div>
+                        <label for="maxDistance" class="block font-medium" data-lang-key="maxDistLabel">領域の拡張距離 (半径)</label>
+                        <input type="number" id="maxDistance" class="mt-1" value="500">
+                    </div>
+                    <div class="mt-4">
+                        <label for="legendX" class="block font-medium" data-lang-key="legendXLabel">凡例のX座標</label>
+                        <input type="number" id="legendX" class="mt-1">
+                    </div>
+                    <div class="mt-4">
+                        <label for="legendY" class="block font-medium" data-lang-key="legendYLabel">凡例のY座標</label>
+                        <input type="number" id="legendY" class="mt-1">
+                    </div>
+                    <div class="mt-4">
+                        <label for="legendSize" class="block font-medium" data-lang-key="legendSizeLabel">凡例のサイズ</label>
+                        <input type="number" id="legendSize" class="mt-1">
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <h2 data-lang-key="section2Title">2. タイトル設定</h2>
+                    <div id="titleSettings"></div>
+                </div>
+            </div>
+
+            <!-- SVGプレビューエリア -->
+            <div class="lg:col-span-8 bg-white p-6 rounded-xl shadow-lg">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-gray-900" data-lang-key="previewTitle">プレビュー</h2>
+                    <button id="downloadSvg" class="btn btn-blue" data-lang-key="downloadSvgBtn">SVGをダウンロード</button>
+                </div>
+                <div id="svgPreview" class="border border-gray-200 rounded-lg w-full h-[600px] lg:h-auto lg:aspect-[1/1] overflow-auto bg-gray-50">
+                    <p class="p-4 text-gray-500" data-lang-key="previewLoading">設定を読み込んでいます...</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 中段：データ自動入力 -->
+        <div class="bg-white p-6 rounded-xl shadow-lg prose max-w-none mb-6">
+             <h2 data-lang-key="section3Title">3. データ自動入力 (タブ区切り)</h2>
+             <p data-lang-key="section3Desc" class="text-sm text-gray-600">ここに処理したいデータを貼り付けてください。ヘッダー（idとdata）もタブで区切ってください。</p>
+             <textarea id="rawDataInput" class="w-full h-40 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="id	data&#10;1	sísam; inuye書く。&#10;2	pa, -ke; sató [日本語]&#10;3	hesurí (sísam); makta《曾祖母》&#10;4	1uré; sút, -cí [雅・稀]&#10;5	sísam"></textarea>
+             <div class="mt-4 text-center">
+                 <button id="processDataBtn" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all duration-300 transform hover:scale-105" data-lang-key="processBtn">
+                     処理実行 & 全データに反映
+                 </button>
+             </div>
+             <div id="processingError" class="mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative hidden" role="alert">
+                <strong class="font-bold" data-lang-key="errorHeader">エラー:</strong>
+                <span class="block sm:inline"></span>
+            </div>
+        </div>
+
+        <!-- 下段：データテーブル -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- 記号データ -->
+            <div class="lg:col-span-5 bg-white p-6 rounded-xl shadow-lg prose prose-sm max-w-none">
+                <h2 data-lang-key="section4Title">4. 記号データ</h2>
+                 <p data-lang-key="section4Desc" class="text-xs text-gray-600">以下の形式でタブまたはカンマ区切りのデータを貼り付けてください：<br><code class="text-xs">記号ID [tab/comma] 単語名</code></p>
+                <textarea id="symbolDataInput" rows="10" class="font-mono text-sm"></textarea>
+                <button id="loadSymbolData" class="btn btn-blue mt-2" data-lang-key="loadDataBtn">データを読み込み</button>
+            </div>
+
+            <!-- 配置データ -->
+            <div class="lg:col-span-7 bg-white p-6 rounded-xl shadow-lg prose prose-sm max-w-none">
+                <h2 data-lang-key="section5Title">5. 配置データ</h2>
+                <p data-lang-key="section5Desc" class="text-xs text-gray-600">以下の形式でタブまたはカンマ区切りのデータを貼り付けてください：<br><code class="text-xs">場所ID [tab/comma] 記号ID1 [tab/comma] 記号ID2 ...</code></p>
+                <textarea id="placementDataInput" rows="10" class="font-mono text-sm"></textarea>
+                <button id="loadPlacementData" class="btn btn-blue mt-2" data-lang-key="loadDataBtn">データを読み込み</button>
+            </div>
+            
+            <!-- TSV -> Wikipedia表 変換ツール -->
+            <div class="lg:col-span-12 bg-white p-6 rounded-xl shadow-lg prose max-w-none mt-6">
+                <h2 data-lang-key="section6Title">6. Wikipedia形式の表</h2>
+                <p data-lang-key="section6Desc" class="text-sm text-gray-600">「3. データ自動入力」のTSVデータと地点データを元に、Wikipedia形式の表が自動生成されます。</p>
+                <div class="flex items-center gap-4 mt-4">
+                     <button id="copyWikiTableBtn" class="bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 transition-all text-sm" data-lang-key="copyTableBtn">
+                        表をコピー
+                    </button>
+                </div>
+                <textarea id="wikiTableOutput" readonly class="w-full h-60 mt-4 p-3 font-mono text-sm border border-gray-300 rounded-lg bg-gray-50"></textarea>
+            </div>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- START: 多言語対応 ---
+    const uiStrings = {
+        appTitle: { ja: "ニヴフ語方言地図SVGジェネレーター", en: "Nivkh Dialect Map SVG Generator", zh: "尼夫赫语方言地图SVG生成器", ko: "니브흐어 방언 지도 SVG 생성기", ru: "Генератор SVG карты диалектов нивхского языка" },
+        appSubtitle: { ja: "各種データを入力または編集して、ニヴフ語方言地図を生成します。", en: "Generate a Nivkh dialect map by entering or editing various data.", zh: "通过输入或编辑各种数据来生成尼夫赫语方言地图。", ko: "각종 데이터를 입력하거나 편집하여 니브흐어 방언 지도를 생성합니다.", ru: "Создайте карту диалектов нивхского языка, вводя или редактируя различные данные." },
+        section1Title: { ja: "1. 基本設定", en: "1. Basic Settings", zh: "1. 基本设置", ko: "1. 기본 설정", ru: "1. Основные настройки" },
+        maxDistLabel: { ja: "領域の拡張距離 (半径)", en: "Area Expansion Distance (Radius)", zh: "区域扩张距离（半径）", ko: "영역 확장 거리 (반경)", ru: "Расстояние расширения области (радиус)" },
+        legendXLabel: { ja: "凡例のX座標", en: "Legend X-coordinate", zh: "图例X坐标", ko: "범례 X좌표", ru: "Координата X легенды" },
+        legendYLabel: { ja: "凡例のY座標", en: "Legend Y-coordinate", zh: "图例Y坐标", ko: "범례 Y좌표", ru: "Координата Y легенды" },
+        legendSizeLabel: { ja: "凡例のサイズ", en: "Legend Size", zh: "图例大小", ko: "범례 크기", ru: "Размер легенды" },
+        section2Title: { ja: "2. タイトル設定", en: "2. Title Settings", zh: "2. 标题设置", ko: "2. 제목 설정", ru: "2. Настройки заголовка" },
+        titleEnglish: { ja: "英語", en: "English", zh: "英语", ko: "영어", ru: "Английский" },
+        titleRussian: { ja: "ロシア語", en: "Russian", zh: "俄语", ko: "러시아어", ru: "Русский" },
+        titleHiragana: { ja: "ふりがな", en: "Furigana", zh: "日文假名", ko: "후리가나", ru: "Фуригана" },
+        titleKanji: { ja: "漢字", en: "Kanji", zh: "汉字", ko: "한자", ru: "Кандзи" },
+        textLabel: { ja: "テキスト", en: "Text", zh: "文本", ko: "텍스트", ru: "Текст" },
+        sizeLabel: { ja: "サイズ", en: "Size", zh: "大小", ko: "크기", ru: "Размер" },
+        xCoordLabel: { ja: "X座標", en: "X-coord", zh: "X坐标", ko: "X좌표", ru: "X-коорд" },
+        yCoordLabel: { ja: "Y座標", en: "Y-coord", zh: "Y坐标", ko: "Y좌표", ru: "Y-коорд" },
+        previewTitle: { ja: "プレビュー", en: "Preview", zh: "预览", ko: "미리보기", ru: "Предпросмотр" },
+        downloadSvgBtn: { ja: "SVGをダウンロード", en: "Download SVG", zh: "下载SVG", ko: "SVG 다운로드", ru: "Скачать SVG" },
+        previewLoading: { ja: "設定を読み込んでいます...", en: "Loading settings...", zh: "正在加载设置...", ko: "설정을 불러오는 중...", ru: "Загрузка настроек..." },
+        section3Title: { ja: "3. データ自動入力 (タブ区切り)", en: "3. Automatic Data Input (Tab-separated)", zh: "3. 自动数据输入（制表符分隔）", ko: "3. 데이터 자동 입력 (탭으로 구분)", ru: "3. Автоматический ввод данных (с разделителями-табуляциями)" },
+        section3Desc: { ja: "ここに処理したいデータを貼り付けてください。ヘッダー（idとdata）もタブで区切ってください。", en: "Paste the data you want to process here. The header (id and data) must also be separated by tabs.", zh: "请在此处粘贴您要处理的数据。标题（id和data）也必须用制表符分隔。", ko: "처리할 데이터를 여기에 붙여넣으세요. 헤더(id 및 data)도 탭으로 구분해야 합니다.", ru: "Вставьте данные для обработки сюда. Заголовок (id и data) также должен быть разделен табуляцией." },
+        processBtn: { ja: "処理実行 & 全データに反映", en: "Process & Apply to All Data", zh: "处理并应用于所有数据", ko: "처리 실행 및 모든 데이터에 반영", ru: "Обработать и применить ко всем данным" },
+        errorHeader: { ja: "エラー:", en: "Error:", zh: "错误：", ko: "오류:", ru: "Ошибка:" },
+        section4Title: { ja: "4. 記号データ", en: "4. Symbol Data", zh: "4. 符号数据", ko: "4. 기호 데이터", ru: "4. Данные символов" },
+        section4Desc: { ja: "以下の形式でタブまたはカンマ区切りのデータを貼り付けてください：<br><code class=\"text-xs\">記号ID [tab/comma] 単語名</code>", en: "Paste data in the following format (tab or comma separated):<br><code class=\"text-xs\">Symbol ID [tab/comma] Word</code>", zh: "请按以下格式粘贴数据（制表符或逗号分隔）：<br><code class=\"text-xs\">符号ID [tab/comma] 单词</code>", ko: "다음 형식으로 데이터를 붙여넣으세요 (탭 또는 쉼표로 구분):<br><code class=\"text-xs\">기호 ID [tab/comma] 단어</code>", ru: "Вставьте данные в следующем формате (разделитель - табуляция или запятая):<br><code class=\"text-xs\">ID символа [tab/comma] Слово</code>" },
+        loadDataBtn: { ja: "データを読み込み", en: "Load Data", zh: "加载数据", ko: "데이터 불러오기", ru: "Загрузить данные" },
+        section5Title: { ja: "5. 配置データ", en: "5. Placement Data", zh: "5. 放置数据", ko: "5. 배치 데이터", ru: "5. Данные о размещении" },
+        section5Desc: { ja: "以下の形式でタブまたはカンマ区切りのデータを貼り付けてください：<br><code class=\"text-xs\">場所ID [tab/comma] 記号ID1...</code>", en: "Paste data in the following format (tab or comma separated):<br><code class=\"text-xs\">Location ID [tab/comma] Symbol ID 1...</code>", zh: "请按以下格式粘贴数据（制表符或逗号分隔）：<br><code class=\"text-xs\">位置ID [tab/comma] 符号ID1...</code>", ko: "다음 형식으로 데이터를 붙여넣으세요 (탭 또는 쉼표로 구분):<br><code class=\"text-xs\">장소 ID [tab/comma] 기호 ID 1...</code>", ru: "Вставьте данные в следующем формате (разделитель - табуляция или запятая):<br><code class=\"text-xs\">ID местоположения [tab/comma] ID символа 1...</code>" },
+        section6Title: { ja: "6. Wikipedia形式の表", en: "6. Wikipedia Table Format", zh: "6. Wikipedia表格格式", ko: "6. 위키피디아 형식 표", ru: "6. Формат таблицы Wikipedia" },
+        section6Desc: { ja: "「3. データ自動入力」のTSVデータと地点データを元に、Wikipedia形式の表が自動生成されます。", en: "A Wikipedia-formatted table is automatically generated based on the TSV data from '3. Automatic Data Input' and location data.", zh: "根据“3. 自动数据输入”中的TSV数据和位置数据自动生成Wikipedia格式的表格。", ko: "'3. 데이터 자동 입력'의 TSV 데이터와 위치 데이터를 기반으로 위키피디아 형식의 표가 자동으로 생성됩니다.", ru: "Таблица в формате Wikipedia автоматически генерируется на основе данных TSV из '3. Автоматический ввод данных' и данных о местоположении." },
+        copyTableBtn: { ja: "表をコピー", en: "Copy Table", zh: "复制表格", ko: "표 복사", ru: "Копировать таблицу" },
+        copySuccess: { ja: "コピー完了！", en: "Copied!", zh: "已复制！", ko: "복사 완료!", ru: "Скопировано!" },
+        errorGeneric: { ja: "エラー: SVGの生成に失敗しました。", en: "Error: Failed to generate SVG.", zh: "错误：SVG生成失败。", ko: "오류: SVG 생성에 실패했습니다.", ru: "Ошибка: не удалось создать SVG." },
+        errorInputEmpty: { ja: "入力データが空です。", en: "Input data is empty.", zh: "输入数据为空。", ko: "입력 데이터가 비어 있습니다.", ru: "Входные данные пусты." },
+        errorInputShort: { ja: "データはヘッダー行を含めて2行以上必要です。", en: "Data must have at least 2 rows, including the header.", zh: "数据必须至少有2行，包括标题行。", ko: "데이터는 헤더를 포함하여 2줄 이상이어야 합니다.", ru: "Данные должны содержать не менее 2 строк, включая заголовок." },
+        errorHeaderNotFound: { ja: "ヘッダーに \"id\" と \"data\" が見つかりません。", en: "Header must contain 'id' and 'data'.", zh: "标题中必须包含“id”和“data”。", ko: "헤더에 'id'와 'data'가 없습니다.", ru: "Заголовок должен содержать 'id' и 'data'." },
+        wikiTableErrorNoData: { ja: "「3. データ自動入力」にデータがありません。", en: "No data in '3. Automatic Data Input'.", zh: "“3. 自动数据输入”中没有数据。", ko: "'3. 데이터 자동 입력'에 데이터가 없습니다.", ru: "Нет данных в '3. Автоматический ввод данных'." },
+        wikiTableErrorShort: { ja: "「3. データ自動入力」のデータはヘッダー行を含めて2行以上必要です。", en: "Data in '3. Automatic Data Input' must have at least 2 rows, including the header.", zh: "“3. 自动数据输入”中的数据必须至少有2行，包括标题行。", ko: "'3. 데이터 자동 입력'의 데이터는 헤더를 포함하여 2줄 이상이어야 합니다.", ru: "Данные в '3. Автоматический ввод данных' должны содержать не менее 2 строк, включая заголовок." }
+    };
+
+    let currentLanguage = 'ja';
+
+    function setLanguage(lang) {
+        currentLanguage = lang;
+        document.documentElement.lang = lang;
+        document.querySelectorAll('[data-lang-key]').forEach(el => {
+            const key = el.dataset.langKey;
+            if (uiStrings[key] && uiStrings[key][lang]) {
+                if(el.tagName === 'TEXTAREA' && el.placeholder) {
+                    // Placeholderの翻訳は未対応なのでスキップ
+                } else if (key === 'section4Desc' || key === 'section5Desc') {
+                     el.innerHTML = uiStrings[key][lang];
+                }
+                else {
+                    el.textContent = uiStrings[key][lang];
+                }
+            }
+        });
+        // タイトル設定のラベルも更新
+        renderTitleSettings();
+    }
+    // --- END: 多言語対応 ---
+
+    // 基準地図のSVGデータを直接埋め込み
+    const baseMapSVG = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 8192 8192">
+<defs>
+    <style>
+      .st0, .st1 {
+        fill: #fff;
+      }
+
+      .st0, .st2 {
+        stroke-miterlimit: 10;
+      }
+
+      .st0, .st2, .st3 {
+        stroke: #000;
+        stroke-width: 10px;
+      }
+
+      .st2 {
+        fill: #abd7b1;
+      }
+
+      .st3 {
+        fill: none;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+    </style>
+  </defs>
+  <g id="canvas">
+    <rect class="st1" x="0" y="0" width="8192" height="8192"/>
+  </g>
+</svg>`;
+
+    // デフォルトの記号スタイル定義
+    const SYMBOL_PROTOTYPES = [
+        { symbolFill: '#F1C232', symbolStroke: '#000000', areaFill: '#FFE599', areaStroke: '#7F6000', info: '黄色い五芒星001' },
+        { symbolFill: '#CC0000', symbolStroke: '#000000', areaFill: '#EA9999', areaStroke: '#660000', info: '赤ひし形002' },
+        { symbolFill: '#674EA7', symbolStroke: '#000000', areaFill: '#B4A7D6', areaStroke: '#20124D', info: '紫三角003' },
+        { symbolFill: '#1155CC', symbolStroke: '#000000', areaFill: '#9FC5E8', areaStroke: '#073763', info: '青丸004' },
+        { symbolFill: '#45818E', symbolStroke: '#000000', areaFill: '#A2C4C9', areaStroke: '#0C343D', info: '青緑五角形005' },
+        { symbolFill: '#E69138', symbolStroke: '#000000', areaFill: '#F9CB9C', areaStroke: '#783F04', info: 'オレンジ六芒星006' },
+        { symbolFill: '#3C78D8', symbolStroke: '#000000', areaFill: '#A4C2F4', areaStroke: '#1C4587', info: '明るい青逆五芒007' },
+        { symbolFill: '#A64D79', symbolStroke: '#000000', areaFill: '#D5A6BD', areaStroke: '#52293C', info: 'マゼンタ逆ひし008' },
+        { symbolFill: '#B45F06', symbolStroke: '#000000', areaFill: '#F6B26B', areaStroke: '#783F04', info: '009' },
+        { symbolFill: '#8E7CC3', symbolStroke: '#000000', areaFill: '#D9D2E9', areaStroke: '#4C3B78', info: '010' },
+        { symbolFill: '#CC4125', symbolStroke: '#000000', areaFill: '#F4CCCC', areaStroke: '#660000', info: '011' },
+        { symbolFill: '#F7C467', symbolStroke: '#000000', areaFill: '#FCE5CD', areaStroke: '#B45F06', info: '012' },
+        { symbolFill: '#4285F4', symbolStroke: '#000000', areaFill: '#A4C2F4', areaStroke: '#1967D2', info: '013' },
+        { symbolFill: '#0F9D58', symbolStroke: '#000000', areaFill: '#81C784', areaStroke: '#0B8043', info: '014' },
+        { symbolFill: '#F4B400', symbolStroke: '#000000', areaFill: '#FDE293', areaStroke: '#A67C00', info: '015' }
+    ];
+
+    // 状態管理オブジェクト
+    const state = {
+        maxDistance: 400,
+        legendX: 450,
+        legendY: 7800,
+        legendSize: 240,
+        titles: [
+            { id: 'english', nameKey: 'titleEnglish', text: 'template', fontSize: 500, x: 2300, y: 700 },
+            { id: 'russian', nameKey: 'titleRussian', text: 'шаблон', fontSize: 500, x: 2300, y: 1500 },
+            { id: 'hiragana', nameKey: 'titleHiragana', text: 'みほん', fontSize: 350, x: 6300, y: 700 },
+            { id: 'kanji', nameKey: 'titleKanji', text: '見本', fontSize: 500, x: 6300, y: 1400 }
+        ],
+        symbols: [], // Initially empty, populated from textarea
+        placements: [
+                        { id: 1, englishName: 'Poronaysk', japaneseName: 'ポロナイスク', symbolX: 5940, symbolY: 7650, symbolId1: 0, symbolId2: 0, symbolId3: 0, symbolId4: 0, symbolId5: 0, symbolId6: 0, symbolId7: 0, symbolId8: 0, symbolId9: 0, labelX: 5940, labelY: 7250 },
+            { id: 2, englishName: 'Samani', japaneseName: 'ノグリキ仮', symbolX: 1510, symbolY: 5262, symbolId1: 0, symbolId2: 0, symbolId3: 0, symbolId4: 0, symbolId5: 0, symbolId6: 0, symbolId7: 0, symbolId8: 0, symbolId9: 0, labelX: 1780, labelY: 5300 },
+            { id: 3, englishName: 'Ten’gi', japaneseName: 'チェギ', symbolX: 4974.18, symbolY: 3812.91, symbolId1: 0, symbolId2: 0, symbolId3: 0, symbolId4: 0, symbolId5: 0, symbolId6: 0, symbolId7: 0, symbolId8: 0, symbolId9: 0, labelX: 4974.18, labelY: 4112.91 },
+            { id: 4, englishName: 'Men’shikova', japaneseName: 'メニシコヴァ', symbolX: 4662, symbolY: 3117, symbolId1: 0, symbolId2: 0, symbolId3: 0, symbolId4: 0, symbolId5: 0, symbolId6: 0, symbolId7: 0, symbolId8: 0, symbolId9: 0, labelX: 4662, labelY: 3417 },
+            { id: 5, englishName: 'Niikappu', japaneseName: 'マチラヴォ', symbolX: 3465, symbolY: 3391, symbolId1: 0, symbolId2: 0, symbolId3: 0, symbolId4: 0, symbolId5: 0, symbolId6: 0, symbolId7: 0, symbolId8: 0, symbolId9: 0, labelX: 3465, labelY: 3691 },
+            { id: 6, englishName: 'Obihiro', japaneseName: 'チョミ', symbolX: 4687, symbolY: 4434, symbolId1: 0, symbolId2: 0, symbolId3: 0, symbolId4: 0, symbolId5: 0, symbolId6: 0, symbolId7: 0, symbolId8: 0, symbolId9: 0, labelX: 4687, labelY: 4734 },
+            { id: 7, englishName: 'Kol’-Nikol’sk', japaneseName: 'コル・ニコルスク', symbolX: 4010.80, symbolY: 2721.82, symbolId1: 0, symbolId2: 0, symbolId3: 0, symbolId4: 0, symbolId5: 0, symbolId6: 0, symbolId7: 0, symbolId8: 0, symbolId9: 0, labelX: 4010.80, labelY: 3021.82 },
+            { id: 8, englishName: 'Novo-Troitskoe', japaneseName: 'ノヴォトロイツコエ', symbolX: 3549.40, symbolY: 3242.34, symbolId1: 0, symbolId2: 0, symbolId3: 0, symbolId4: 0, symbolId5: 0, symbolId6: 0, symbolId7: 0, symbolId8: 0, symbolId9: 0, labelX: 3549.40, labelY: 3542.34 },
+            { id: 9, englishName: 'De-Kastri', japaneseName: 'デカストリ', symbolX: 4687, symbolY: 4434, symbolId1: 0, symbolId2: 0, symbolId3: 0, symbolId4: 0, symbolId5: 0, symbolId6: 0, symbolId7: 0, symbolId8: 0, symbolId9: 0, labelX: 4687, labelY: 4734 },
+            { id: 10, englishName: 'Chnyrrakh', japaneseName: 'チヌイラフ', symbolX: 4100, symbolY: 2400, symbolId1: 0, symbolId2: 0, symbolId3: 0, symbolId4: 0, symbolId5: 0, symbolId6: 0, symbolId7: 0, symbolId8: 0, symbolId9: 0, labelX: 4100, labelY: 2700 },
+            { id: 11, englishName: 'Lazarev', japaneseName: 'ラザレフ', symbolX: 4974, symbolY: 3812, symbolId1: 0, symbolId2: 0, symbolId3: 0, symbolId4: 0, symbolId5: 0, symbolId6: 0, symbolId7: 0, symbolId8: 0, symbolId9: 0, labelX: 4974, labelY: 4112 },
+            { id: 12, englishName: 'Vayda', japaneseName: 'ヴァイダ', symbolX: 6100, symbolY: 3000, symbolId1: 0, symbolId2: 0, symbolId3: 0, symbolId4: 0, symbolId5: 0, symbolId6: 0, symbolId7: 0, symbolId8: 0, symbolId9: 0, labelX: 6100, labelY: 3300 },
+            { id: 13, englishName: 'Langry', japaneseName: 'ラングリ', symbolX: 5400, symbolY: 6500, symbolId1: 0, symbolId2: 0, symbolId3: 0, symbolId4: 0, symbolId5: 0, symbolId6: 0, symbolId7: 0, symbolId8: 0, symbolId9: 0, labelX: 5400, labelY: 6800 },
+            { id: 14, englishName: 'Chir-Unvd', japaneseName: 'チルウンヴド', symbolX: 4662, symbolY: 6500, symbolId1: 0, symbolId2: 0, symbolId3: 0, symbolId4: 0, symbolId5: 0, symbolId6: 0, symbolId7: 0, symbolId8: 0, symbolId9: 0, labelX: 4662, labelY: 6800 }
+        ]
+    };
+
+    // --- DOM Elements ---
+    const rawDataInputEl = document.getElementById('rawDataInput');
+    const processDataBtnEl = document.getElementById('processDataBtn');
+    const processingErrorEl = document.getElementById('processingError');
+    const symbolDataInputEl = document.getElementById('symbolDataInput');
+    const placementDataInputEl = document.getElementById('placementDataInput');
+    const copyWikiTableBtnEl = document.getElementById('copyWikiTableBtn');
+    const wikiTableOutputEl = document.getElementById('wikiTableOutput');
+    const langSelectorEl = document.getElementById('lang-selector');
+
+
+    // 初期化関数
+    function init() {
+        document.getElementById('maxDistance').value = state.maxDistance;
+        document.getElementById('legendX').value = state.legendX;
+        document.getElementById('legendY').value = state.legendY;
+        document.getElementById('legendSize').value = state.legendSize;
+        
+        attachEventListeners();
+        
+        setLanguage('ja'); // デフォルト言語を設定
+        updatePreview();
+    }
+
+    // イベントリスナー設定
+    function attachEventListeners() {
+        langSelectorEl.addEventListener('change', (e) => setLanguage(e.target.value));
+
+        document.getElementById('maxDistance').addEventListener('change', (e) => {
+            state.maxDistance = parseInt(e.target.value, 10);
+            updatePreview();
+        });
+        document.getElementById('legendX').addEventListener('change', (e) => {
+            state.legendX = parseInt(e.target.value, 10);
+            updatePreview();
+        });
+        document.getElementById('legendY').addEventListener('change', (e) => {
+            state.legendY = parseInt(e.target.value, 10);
+            updatePreview();
+        });
+        document.getElementById('legendSize').addEventListener('change', (e) => {
+            state.legendSize = parseInt(e.target.value, 10);
+            updatePreview();
+        });
+        document.getElementById('titleSettings').addEventListener('change', handleTitleChange);
+        
+        // Manual load buttons
+        document.getElementById('loadSymbolData').addEventListener('click', () => {
+            loadSymbolData();
+            updatePreview();
+        });
+        document.getElementById('loadPlacementData').addEventListener('click', () => {
+            loadPlacementData();
+            updatePreview();
+        });
+
+        // Automatic processing button
+        processDataBtnEl.addEventListener('click', handleProcessData);
+        
+        document.getElementById('downloadSvg').addEventListener('click', downloadSvg);
+
+        // Wikipedia Table generator
+        copyWikiTableBtnEl.addEventListener('click', () => copyToClipboard(wikiTableOutputEl.value, copyWikiTableBtnEl));
+
+    }
+    
+    // UIレンダリング関数
+    function renderTitleSettings() {
+        const container = document.getElementById('titleSettings');
+        container.innerHTML = state.titles.map(t => `
+            <div class="grid grid-cols-2 gap-x-4 gap-y-2 border-t pt-4 mt-4">
+                <h3 class="col-span-2">${uiStrings[t.nameKey][currentLanguage]}</h3>
+                <div>
+                    <label>${uiStrings.textLabel[currentLanguage]}</label>
+                    <input type="text" data-id="${t.id}" data-prop="text" value="${t.text}">
+                </div>
+                <div>
+                    <label>${uiStrings.sizeLabel[currentLanguage]}</label>
+                    <input type="number" data-id="${t.id}" data-prop="fontSize" value="${t.fontSize}">
+                </div>
+                <div>
+                    <label>${uiStrings.xCoordLabel[currentLanguage]}</label>
+                    <input type="number" data-id="${t.id}" data-prop="x" value="${t.x}">
+                </div>
+                <div>
+                    <label>${uiStrings.yCoordLabel[currentLanguage]}</label>
+                    <input type="number" data-id="${t.id}" data-prop="y" value="${t.y}">
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // データ変更ハンドラ
+    function handleTitleChange(e) {
+        const { id, prop } = e.target.dataset;
+        const value = e.target.type === 'number' ? parseFloat(e.target.value) : e.target.value;
+        const title = state.titles.find(t => t.id === id);
+        if (title) {
+            title[prop] = value;
+            updatePreview();
+        }
+    }
+    
+    function loadSymbolData() {
+        state.symbols = []; // Reset symbols array
+        const data = symbolDataInputEl.value;
+        const lines = data.split('\n');
+
+        lines.forEach(line => {
+            if (line.trim() === '') return;
+            const parts = line.split(/[\t,]/);
+            if(parts.length < 2) return;
+
+            const idStr = parts[0].trim();
+            const word = parts.slice(1).join(' ').trim();
+            const id = parseInt(idStr, 10);
+            
+            if (isNaN(id) || id <= 0) return;
+
+            // Get style from prototypes, cycling if ID > prototype length
+            const style = SYMBOL_PROTOTYPES[(id - 1) % SYMBOL_PROTOTYPES.length];
+
+            state.symbols.push({
+                id: id,
+                word: word,
+                ...style
+            });
+        });
+    }
+
+    function loadPlacementData() {
+        state.placements.forEach(p => {
+            for (let i = 1; i <= 9; i++) {
+                p[`symbolId${i}`] = 0;
+            }
+        });
+
+        const data = placementDataInputEl.value;
+        const lines = data.split('\n');
+
+        lines.forEach(line => {
+            if (line.trim() === '') return;
+
+            const values = line.split(/[\t,]/).map(v => parseInt(v.trim(), 10));
+            if (values.length < 1 || isNaN(values[0])) return;
+
+            const placementId = values[0];
+            const placement = state.placements.find(p => p.id === placementId);
+
+            if (placement) {
+                for (let i = 1; i <= 9; i++) {
+                    placement[`symbolId${i}`] = isNaN(values[i]) ? 0 : values[i];
+                }
+            }
+        });
+    }
+    
+    // --- START: DATA PROCESSING LOGIC ---
+
+    function handleProcessData() {
+        let rawData = rawDataInputEl.value;
+        if (rawData.startsWith('\uFEFF')) {
+            rawData = rawData.substring(1);
+        }
+        rawData = rawData.trim();
+
+        if (!rawData) {
+            showProcessingError(uiStrings.errorInputEmpty[currentLanguage]);
+            return;
+        }
+        
+        const lines = rawData.split('\n').filter(line => line.trim() !== '');
+        if (lines.length < 2) {
+            showProcessingError(uiStrings.errorInputShort[currentLanguage]);
+            return;
+        }
+
+        try {
+            hideProcessingError();
+            const originalData = parseInputTsv(lines);
+            
+            const allWords = [];
+            const dataWithExtractedWords = originalData.map(row => {
+                const cleanedWords = extractAndCleanWords(row.data);
+                cleanedWords.forEach(cleaned => {
+                    allWords.push({
+                        cleaned: cleaned,
+                        normalized: normalizeWord(cleaned)
+                    });
+                });
+                return { id: row.id, cleanedWords: cleanedWords };
+            });
+
+            const { classificationTable, classificationMap } = generateClassificationTable(allWords);
+            const outputData = generateOutputData(dataWithExtractedWords, classificationMap);
+
+            // Populate textareas
+            symbolDataInputEl.value = formatForTextarea(classificationTable, '\t');
+            placementDataInputEl.value = formatForTextarea(outputData, '\t');
+
+            // Trigger load and update for map
+            loadSymbolData();
+            loadPlacementData();
+            updatePreview();
+
+            // Also trigger Wikipedia table generation
+            handleGenerateWikiTable();
+
+        } catch (error) {
+            console.error("処理中にエラーが発生しました:", error);
+            showProcessingError(error.message);
+        }
+    }
+
+    function formatForTextarea(data, delimiter) {
+        if (data.length <= 1) { // Check if only header exists or empty
+            return '';
+        }
+        // Skip header (index 0) and map to string
+        return data.slice(1)
+            .map(row => Object.values(row).join(delimiter))
+            .join('\n');
+    }
+    
+    function parseInputTsv(lines) {
+        const header = lines[0].split('\t').map(h => h.trim().replace(/^"|"$/g, ''));
+        const idIndex = header.indexOf('id');
+        const dataIndex = header.indexOf('data');
+
+        if (idIndex === -1 || dataIndex === -1) {
+            throw new Error(uiStrings.errorHeaderNotFound[currentLanguage]);
+        }
+
+        return lines.slice(1).map(line => {
+            const firstTabIndex = line.indexOf('\t');
+            if (firstTabIndex === -1) return null;
+            
+            const id = line.substring(0, firstTabIndex).trim();
+            let data = line.substring(firstTabIndex + 1).trim();
+
+            if (data.startsWith('"') && data.endsWith('"')) {
+                data = data.substring(1, data.length - 1);
+            }
+
+            return { id, data };
+        }).filter(Boolean);
+    }
+
+    function extractAndCleanWords(cellData) {
+        if (!cellData) return [];
+        let cleanedData = cellData.replace(/\s*\(.*?\)/g, '').replace(/\s*\[.*?\]/g, '');
+        const tokens = cleanedData.split(/[;,]/);
+        let processedTokens = [];
+
+        tokens.forEach(token => {
+            let currentToken = token;
+            if (currentToken.includes('《') || currentToken.includes('》') || currentToken.includes('≪') || currentToken.includes('≫') || currentToken.includes('<<') || currentToken.includes('>>')) return;
+            currentToken = currentToken.replace(/[\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\uFF00-\uFFEF\u4E00-\u9FAF][\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\uFF00-\uFFEF\u4E00-\u9FAF\u3002\u3001]*/g, '');
+            currentToken = currentToken.trim();
+            if (currentToken.startsWith('-') || /^\d/.test(currentToken)) return;
+            currentToken = currentToken.replace(/[()\[\]]/g, '').trim();
+            if (currentToken) {
+                processedTokens.push(currentToken);
+            }
+        });
+        return processedTokens;
+    }
+
+    function normalizeWord(word) {
+        if (!word) return '';
+        return word.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/'/g, '');
+    }
+
+    function generateClassificationTable(allWords) {
+        const frequency = new Map();
+        allWords.forEach(word => {
+            frequency.set(word.normalized, (frequency.get(word.normalized) || 0) + 1);
+        });
+        let sortable = Array.from(frequency.entries()).map(([normalized, count]) => ({ normalized, count }));
+        sortable.sort((a, b) => (b.count - a.count) || a.normalized.localeCompare(b.normalized));
+
+        const classificationTable = [{ '記号ID': '記号ID', 'data': 'data' }];
+        const classificationMap = new Map();
+        sortable.forEach((item, index) => {
+            const classId = index + 1;
+            let displayData = (item.count > 1) ? item.normalized : (allWords.find(w => w.normalized === item.normalized)?.cleaned || item.normalized);
+            classificationTable.push({ '記号ID': classId, 'data': displayData });
+            classificationMap.set(item.normalized, classId);
+        });
+        return { classificationTable, classificationMap };
+    }
+
+    function generateOutputData(dataWithWords, classificationMap) {
+        const outputData = [{ 'id': 'id', 'data': 'data' }];
+        dataWithWords.forEach(row => {
+            const ids = row.cleanedWords
+                .map(word => classificationMap.get(normalizeWord(word)))
+                .filter(id => id !== undefined);
+            
+            // Setを使ってユニークなIDを取得し、ソートして配列に戻す
+            const uniqueSortedIds = [...new Set(ids)].sort((a, b) => a - b);
+            
+            outputData.push({ 'id': row.id, 'data': uniqueSortedIds.join('\t') });
+        });
+        return outputData;
+    }
+
+    function showProcessingError(message) {
+        processingErrorEl.querySelector('span').textContent = message;
+        processingErrorEl.classList.remove('hidden');
+    }
+
+    function hideProcessingError() {
+        processingErrorEl.classList.add('hidden');
+    }
+
+    // --- END: DATA PROCESSING LOGIC ---
+
+
+    // --- START: WIKIPEDIA TABLE LOGIC ---
+    function handleGenerateWikiTable() {
+        const rawData = rawDataInputEl.value.trim();
+        if (!rawData) {
+            wikiTableOutputEl.value = uiStrings.wikiTableErrorNoData[currentLanguage];
+            return;
+        }
+
+        const lines = rawData.split('\n').filter(line => line.trim() !== '');
+        if (lines.length < 2) {
+            wikiTableOutputEl.value = uiStrings.wikiTableErrorShort[currentLanguage];
+            return;
+        }
+
+        try {
+            const tsvDataMap = new Map(parseInputTsv(lines).map(item => [item.id, item.data]));
+
+            let wikiText = '{| class="wikitable"\n';
+            wikiText += '|-\n';
+            wikiText += '! englishName !! japaneseName !! id !! data\n';
+
+            state.placements.forEach(p => {
+                const data = tsvDataMap.get(String(p.id)) || '';
+                wikiText += '|-\n';
+                wikiText += `| ${p.englishName} || ${p.japaneseName} || ${p.id} || ${data}\n`;
+            });
+
+            wikiText += '|}';
+            wikiTableOutputEl.value = wikiText;
+
+        } catch (error) {
+            console.error("Wikipedia表の生成中にエラー:", error);
+            wikiTableOutputEl.value = `${uiStrings.errorHeader[currentLanguage]} ${error.message}`;
+        }
+    }
+
+    function copyToClipboard(text, button) {
+        if (!text) return;
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-9999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            const originalText = button.textContent;
+            button.textContent = uiStrings.copySuccess[currentLanguage];
+            setTimeout(() => {
+                button.textContent = originalText;
+            }, 2000);
+        } catch (err) {
+            console.error('クリップボードへのコピーに失敗:', err);
+        }
+        document.body.removeChild(textArea);
+    }
+    // --- END: WIKIPEDIA TABLE LOGIC ---
+
+    // プレビュー更新
+    async function updatePreview() {
+        const previewDiv = document.getElementById('svgPreview');
+        previewDiv.innerHTML = `<p class="p-4 text-gray-500">${uiStrings.previewLoading[currentLanguage]}</p>`;
+
+        try {
+            const generatedSvg = await generateSvg(baseMapSVG);
+            previewDiv.innerHTML = '';
+            previewDiv.appendChild(generatedSvg);
+            
+        } catch (error) {
+            console.error('Error generating SVG:', error);
+            previewDiv.innerHTML = `<p class="p-4 text-red-500">${uiStrings.errorGeneric[currentLanguage]}<br>${error.message}</p>`;
+        }
+    }
+
+    // SVG生成ロジック
+    async function generateSvg(baseSvgText) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(baseSvgText, "image/svg+xml");
+        const baseSvg = doc.documentElement;
+
+        if (baseSvg.querySelector("parsererror")) {
+          throw new Error("Could not parse the provided SVG content.");
+        }
+        
+        const viewBox = baseSvg.getAttribute('viewBox') || '0 0 8192 8192';
+        const [,, width, height] = viewBox.split(' ');
+        
+        const newSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        newSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        newSvg.setAttribute('version', '1.1');
+        newSvg.setAttribute('viewBox', viewBox);
+
+        const defs = baseSvg.querySelector('defs');
+        if (defs) {
+            newSvg.appendChild(defs.cloneNode(true));
+        }
+        
+        const bgLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        bgLayer.innerHTML = `<rect width="${width}" height="${height}" fill="white" />`;
+        
+        const areaLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        const areaStrokeSingleLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        const mapLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        const symbolLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        const labelLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        const titleLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        const legendLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+        Array.from(baseSvg.children).forEach(child => {
+            if (child.tagName.toLowerCase() === 'path' || child.tagName.toLowerCase() === 'g') {
+                if (child.id !== 'canvas') {
+                    mapLayer.appendChild(child.cloneNode(true));
+                }
+            }
+        });
+        
+        newSvg.appendChild(bgLayer);
+        newSvg.appendChild(areaLayer);
+        newSvg.appendChild(mapLayer);
+        newSvg.appendChild(areaStrokeSingleLayer);
+        newSvg.appendChild(titleLayer);
+        newSvg.appendChild(labelLayer);
+        newSvg.appendChild(symbolLayer);
+        newSvg.appendChild(legendLayer);
+        
+        const symbolGroups = {};
+        state.placements.forEach(p => {
+            const addPoint = (symbolId, point) => {
+                if (symbolId <= 0 || !state.symbols.find(s => s.id === symbolId)) return;
+                if (!symbolGroups[symbolId]) {
+                    symbolGroups[symbolId] = [];
+                }
+                symbolGroups[symbolId].push(point);
+            };
+            const positions = [
+                { x: p.symbolX,        y: p.symbolY },
+                { x: p.symbolX - 120,  y: p.symbolY },
+                { x: p.symbolX + 120,  y: p.symbolY },
+                { x: p.symbolX,        y: p.symbolY - 120 },
+                { x: p.symbolX - 120,  y: p.symbolY - 120 },
+                { x: p.symbolX + 120,  y: p.symbolY - 120 },
+                { x: p.symbolX,        y: p.symbolY + 120 },
+                { x: p.symbolX - 120,  y: p.symbolY + 120 },
+                { x: p.symbolX + 120,  y: p.symbolY + 120 },
+            ];
+
+            for(let i = 1; i <= 9; i++) {
+                addPoint(p[`symbolId${i}`], positions[i-1]);
+            }
+        });
+        
+        for (const symbolId in symbolGroups) {
+            const points = symbolGroups[symbolId];
+            const symbolInfo = state.symbols.find(s => s.id == symbolId);
+            if (!symbolInfo) continue;
+            
+            const regions = findConnectedComponents(points, state.maxDistance);
+            
+            regions.forEach(region => {
+                if (region.length === 1) {
+                    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    circle.setAttribute('cx', region[0].x);
+                    circle.setAttribute('cy', region[0].y);
+                    
+                    const fillCircle = circle.cloneNode();
+                    fillCircle.setAttribute('r', state.maxDistance);
+                    fillCircle.setAttribute('fill', symbolInfo.areaFill);
+                    areaLayer.appendChild(fillCircle);
+
+                    const strokeCircle = circle.cloneNode();
+                    strokeCircle.setAttribute('r', state.maxDistance);
+                    strokeCircle.setAttribute('fill', 'none');
+                    strokeCircle.setAttribute('stroke', symbolInfo.areaStroke);
+                    strokeCircle.setAttribute('stroke-width', '20');
+                    areaStrokeSingleLayer.appendChild(strokeCircle);
+
+                } else if (region.length > 1) {
+                    const hullPoints = getConvexHull(region);
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    let pathData = `M ${hullPoints[0].x} ${hullPoints[0].y} `;
+                    for(let i = 0; i < hullPoints.length; i++){
+                        const p0 = hullPoints[(i - 1 + hullPoints.length) % hullPoints.length];
+                        const p1 = hullPoints[i];
+                        const p2 = hullPoints[(i + 1) % hullPoints.length];
+                        const p3 = hullPoints[(i + 2) % hullPoints.length];
+                        const cp1x = p1.x + (p2.x - p0.x) / 6;
+                        const cp1y = p1.y + (p2.y - p0.y) / 6;
+                        const cp2x = p2.x - (p3.x - p1.x) / 6;
+                        const cp2y = p2.y - (p3.y - p1.y) / 6;
+                        pathData += `C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y} `;
+                    }
+                    pathData += 'Z';
+                    path.setAttribute('d', pathData);
+
+                    const strokePath = path.cloneNode();
+                    strokePath.setAttribute('stroke', symbolInfo.areaStroke);
+                    strokePath.setAttribute('stroke-width', state.maxDistance * 2 + 40);
+                    strokePath.setAttribute('stroke-linejoin', 'round');
+                    strokePath.setAttribute('fill', symbolInfo.areaStroke);
+                    areaLayer.appendChild(strokePath);
+                    
+                    const fillPath = path.cloneNode();
+                    fillPath.setAttribute('stroke', symbolInfo.areaFill);
+                    fillPath.setAttribute('stroke-width', state.maxDistance * 2);
+                    fillPath.setAttribute('stroke-linejoin', 'round');
+                    fillPath.setAttribute('fill', symbolInfo.areaFill);
+                    areaLayer.appendChild(fillPath);
+                }
+            });
+        }
+
+        state.titles.forEach(title => {
+            const textEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            textEl.setAttribute('x', title.x);
+            textEl.setAttribute('y', title.y);
+            textEl.setAttribute('font-size', `${title.fontSize}pt`);
+            textEl.setAttribute('text-anchor', 'middle');
+            textEl.setAttribute('dominant-baseline', 'middle');
+            textEl.setAttribute('fill', '#000000');
+            textEl.setAttribute('stroke', '#FFFFFF');
+            textEl.setAttribute('stroke-width', '25pt');
+            textEl.setAttribute('stroke-linejoin', 'round');
+            textEl.setAttribute('paint-order', 'stroke');
+            textEl.textContent = title.text;
+            titleLayer.appendChild(textEl);
+        });
+
+        state.placements.forEach(p => {
+            const drawSymbol = (symbolId, x, y) => {
+                if (symbolId > 0) {
+                    const symbolInfo = state.symbols.find(s => s.id == symbolId);
+                    if (symbolInfo) {
+                        const symbol = createSymbol(symbolInfo, 120); // 80 -> 120
+                        symbol.setAttribute('transform', `translate(${x}, ${y}) ${symbol.getAttribute('transform') || ''}`);
+                        symbolLayer.appendChild(symbol);
+                    }
+                }
+            };
+            
+            const positions = [
+                { x: p.symbolX,        y: p.symbolY },
+                { x: p.symbolX - 120,  y: p.symbolY },
+                { x: p.symbolX + 120,  y: p.symbolY },
+                { x: p.symbolX,        y: p.symbolY - 120 },
+                { x: p.symbolX - 120,  y: p.symbolY - 120 },
+                { x: p.symbolX + 120,  y: p.symbolY - 120 },
+                { x: p.symbolX,        y: p.symbolY + 120 },
+                { x: p.symbolX - 120,  y: p.symbolY + 120 },
+                { x: p.symbolX + 120,  y: p.symbolY + 120 },
+            ];
+
+            let hasSymbols = false;
+            for(let i = 1; i <= 9; i++) {
+                const symbolId = p[`symbolId${i}`];
+                if (symbolId > 0 && state.symbols.find(s => s.id === symbolId)) {
+                    hasSymbols = true;
+                }
+                drawSymbol(symbolId, positions[i-1].x, positions[i-1].y);
+            }
+            
+            if (hasSymbols) {
+                const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                label.setAttribute('x', p.labelX);
+                label.setAttribute('y', p.labelY - 30);
+                label.setAttribute('font-size', '88pt');
+                label.setAttribute('text-anchor', 'middle');
+                label.setAttribute('dominant-baseline', 'middle');
+                label.setAttribute('fill', '#000000');
+                label.setAttribute('stroke', '#FFFFFF');
+                label.setAttribute('stroke-width', '25pt');
+                label.setAttribute('stroke-linejoin', 'round');
+                label.setAttribute('paint-order', 'stroke');
+
+                const tspan1 = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                tspan1.textContent = p.japaneseName;
+                
+                const tspan2 = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                tspan2.textContent = p.englishName;
+                tspan2.setAttribute('x', p.labelX);
+                tspan2.setAttribute('dy', '106pt');
+
+                label.appendChild(tspan1);
+                label.appendChild(tspan2);
+                labelLayer.appendChild(label);
+            }
+        });
+        
+        const legendSymbols = state.symbols.filter(s => s.word).sort((a, b) => a.id - b.id);
+        const scaleFactor = state.legendSize / 240;
+        const legendSpacing = 400 * scaleFactor;
+
+        legendSymbols.forEach((s, index) => {
+            const legendGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            const symbol = createSymbol(s, state.legendSize);
+            const legendX = state.legendX;
+            const legendY = state.legendY - (legendSymbols.length - 1 - index) * legendSpacing;
+            
+            symbol.setAttribute('transform', `translate(${legendX}, ${legendY}) ${symbol.getAttribute('transform') || ''}`);
+            
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', legendX + (290 * scaleFactor));
+            text.setAttribute('y', legendY);
+            text.setAttribute('font-size', `${300 * scaleFactor}pt`);
+            text.setAttribute('text-anchor', 'start');
+            text.setAttribute('dominant-baseline', 'middle');
+            text.setAttribute('fill', '#000000');
+            text.setAttribute('stroke', '#FFFFFF');
+            text.setAttribute('stroke-width', `${25 * scaleFactor}pt`);
+            text.setAttribute('stroke-linejoin', 'round');
+            text.setAttribute('paint-order', 'stroke');
+            text.textContent = s.word;
+            
+            legendGroup.appendChild(symbol);
+            legendGroup.appendChild(text);
+            legendLayer.appendChild(legendGroup);
+        });
+
+        return newSvg;
+    }
+
+    function createSymbol(symbolInfo, size) {
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        let baseArtworkSize = 90;
+        
+        let shape;
+        const strokeWidth = 10;
+        
+        if (symbolInfo.info.includes('五芒星')) {
+            baseArtworkSize = 90;
+            shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            shape.setAttribute('d', "M144.8,162.6c-.8,0-1.6-.2-2.3-.6l-22.4-11.8-22.4,11.8c-.7.4-1.5.6-2.3.6s-2.1-.3-2.9-1c-1.5-1.1-2.3-3-2-4.9l4.3-24.9-18.1-17.7c-1.4-1.3-1.9-3.3-1.3-5.1.6-1.8,2.2-3.1,4-3.4l25-3.6,11.2-22.7c.8-1.7,2.6-2.8,4.5-2.8h0c1.9,0,3.6,1.1,4.5,2.8l11.2,22.7,25,3.6c1.9.3,3.4,1.6,4,3.4.6,1.8,0,3.8-1.3,5.1l-18.1,17.7,4.3,24.9c.3,1.9-.4,3.8-2,4.9-.9.6-1.9,1-2.9,1Z");
+        } else if (symbolInfo.info.includes('ひし形')) {
+            baseArtworkSize = 90;
+            shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            shape.setAttribute('d', "M120,165c-1.8,0-3.5-1-4.4-2.6l-13.4-24.6-24.6-13.4c-1.6-.9-2.6-2.6-2.6-4.4s1-3.5,2.6-4.4l24.6-13.4,13.4-24.6c.9-1.6,2.6-2.6,4.4-2.6s3.5,1,4.4,2.6l13.4,24.6,24.6,13.4c1.6.9,2.6,2.6,2.6,4.4s-1,3.5-2.6,4.4l-24.6,13.4-13.4,24.6c-.9,1.6-2.6,2.6-4.4,2.6Z");
+        } else if (symbolInfo.info.includes('三角')) {
+             baseArtworkSize = 80;
+             shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+             shape.setAttribute('d', "M80,159.6c-1.8,0-3.4-1-4.3-2.5s-.9-3.5,0-5l40-69.3c.9-1.5,2.5-2.5,4.3-2.5s3.4,1,4.3,2.5l40,69.3c.9,1.5.9,3.5,0,5s-2.5,2.5-4.3,2.5h-80Z");
+        } else if (symbolInfo.info.includes('丸')) {
+            baseArtworkSize = 90;
+            shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            shape.setAttribute('d', "M120,165c-24.8,0-45-20.2-45-45s20.2-45,45-45,45,20.2,45,45-20.2,45-45,45Z");
+        } else if (symbolInfo.info.includes('五角形')) {
+            baseArtworkSize = 90;
+            shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            shape.setAttribute('d', "M95.3,163c-2.2,0-4.1-1.4-4.8-3.5l-15.3-47c-.7-2.1,0-4.3,1.8-5.6l40-29.1c.9-.6,1.9-1,2.9-1s2.1.3,2.9,1l40,29.1c1.8,1.3,2.5,3.5,1.8,5.6l-15.3,47c-.7,2.1-2.6,3.5-4.8,3.5h-49.4Z");
+        } else if (symbolInfo.info.includes('六芒星')) {
+            baseArtworkSize = 90;
+            shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            shape.setAttribute('d', "M140,159.6c-1,0-2.1-.3-3-1l-17-12.5-17,12.5c-.9.6-1.9,1-3,1s-1.7-.2-2.5-.7c-1.7-1-2.7-2.9-2.5-4.9l2.3-21-19.3-8.5c-1.8-.8-3-2.6-3-4.6s1.2-3.8,3-4.6l19.3-8.5-2.3-21c-.2-2,.8-3.9,2.5-4.9.8-.4,1.6-.7,2.5-.7s2.1.3,3,1l17,12.5,17-12.5c.9-.6,1.9-1,3-1s1.7.2,2.5.7c1.7,1,2.7,2.9,2.5,4.9l-2.3,21,19.3,8.5c1.8.8,3,2.6,3,4.6s-1.2,3.8-3,4.6l-19.3,8.5,2.3,21c.2,2-.8,3.9-2.5,4.9-.8.4-1.6.7-2.5.7Z");
+        } else if (symbolInfo.info.includes('逆五芒')) {
+            baseArtworkSize = 90;
+            shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            shape.setAttribute('d', "M95.3,76.9c.8,0,1.6.2,2.3.6l22.4,11.8,22.4-11.8c.7-.4,1.5-.6,2.3-.6s2.1.3,2.9,1c1.5,1.1,2.3,3,2,4.9l-4.3,24.9,18.1,17.7c1.4,1.3,1.9,3.3,1.3,5.1-.6,1.8-2.2,3.1-4,3.4l-25,3.6-11.2,22.7c-.8,1.7-2.6,2.8-4.5,2.8h0c-1.9,0-3.6-1.1-4.5-2.8l-11.2-22.7-25-3.6c-1.9-.3-3.4-1.6-4-3.4s0-3.8,1.3-5.1l18.1-17.7-4.3-24.9c-.3-1.9.4-3.8,2-4.9.9-.6,1.9-1,2.9-1h0Z");
+        } else if (symbolInfo.info.includes('逆ひし')) {
+            baseArtworkSize = 90;
+            shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            shape.setAttribute('d', "M151.8,151.8c-1.3,1.3-3.2,1.8-4.9,1.3l-26.9-7.9-26.9,7.9c-1.8.5-3.7,0-4.9-1.3s-1.8-3.2-1.3-4.9l7.9-26.9-7.9-26.9c-.5-1.8,0-3.7,1.3-4.9s3.2-1.8,4.9-1.3l26.9,7.9,26.9-7.9c1.8-.5,3.7,0,4.9,1.3s1.8,3.2,1.3,4.9l-7.9,26.9,7.9,26.9c.5,1.8,0,3.7-1.3,4.9Z");
+        } else if (symbolInfo.info.includes('009')) {
+            baseArtworkSize = 90;
+            shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            shape.setAttribute('d', "M144.5,149.6c-1.7,0-3.2,0-4.5-.2-4.6-.3-8.6-3.6-9.6-8-.2-.9-.4-1.7-.5-2.4-.2-1.3-.4-2-.9-3.1-1.8-3.3-5.1-5.3-8.9-5.3s-7.3,1.6-9.2,6c-.3.6-.4,1.4-.6,2.3-.5,2.7-1.5,7.3-6.8,9.5-1.1.4-2.2.7-3.3.8-.1,0-.3,0-.4,0s-.2,0-.3,0c-1,0-2,0-3.1,0-1.7,0-3.4,0-5.1.1-1.8,0-3.6.1-5.4.1s-3.1,0-4.5-.1c-7-.5-11.6-6.1-11.2-13.6.8-12.5,6.5-24,16.3-32.5,9.4-8.2,21.4-12.7,33.8-12.7s2.9,0,4.3.2c24.5,2.1,44.5,22.2,45.6,45.6.2,5.1-1.9,9.3-5.7,11.3-.3.2-.6.5-1,.7,0,0,0,0-.1,0-1.4.6-2.7,1-4.1,1.2-.2,0-.3,0-.5,0s-.2,0-.3,0c-.9,0-2,0-3.1,0-1.7,0-3.4,0-5.2.1-1.8,0-3.6.1-5.5.1Z");
+        } else if (symbolInfo.info.includes('010')) {
+            baseArtworkSize = 90;
+            shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            shape.setAttribute('d', "M119.9,149.6c-1.4,0-2.9,0-4.3-.2-24.5-2.1-44.5-22.2-45.6-45.6-.2-5.1,1.9-9.3,5.7-11.3.3-.2.6-.5,1-.7,0,0,0,0,.1,0,1.4-.6,2.7-1,4.1-1.2.2,0,.3,0,.5,0s.2,0,.3,0c.9,0,2,0,3.1,0,1.7,0,3.4,0,5.2-.1,1.8,0,3.6-.1,5.5-.1s3.2,0,4.5.2c4.6.3,8.6,3.6,9.6,8,.2.9.4,1.7.5,2.4.2,1.3.4,2,.9,3.1,1.8,3.3,5.1,5.3,8.9,5.3s7.3-1.6,9.2-6c.3-.6.4-1.4.6-2.3.5-2.7,1.5-7.3-6.8,9.5-1.1-.4-2.2-.7-3.3-.8-.1,0,.3,0,.4,0s.2,0,.3,0c1,0,2,0,3.1,0,1.7,0,3.4,0,5.1-.1,1.8,0,3.6-.1,5.4-.1s3.1,0,4.5.1c7,.5,11.6,6.1,11.2,13.6-.8,12.5-6.5,24-16.3,32.5-9.4,8.2-21.4,12.7-33.8,12.7Z");
+        } else if (symbolInfo.info.includes('011')) {
+            baseArtworkSize = 90;
+            shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            shape.setAttribute('d', "M136.7,170c-.3,0-.7,0-1.1,0-12.6-.8-24.2-6.7-32.7-16.6-9-10.4-13.5-24.2-12.3-37.8,2.1-24.5,22.2-44.5,45.6-45.6.3,0,.5,0,.8,0,4.8,0,8.6,2.1,10.5,5.7.2.3.4.6.6,1s0,0,0,.1c.6,1.4,1,2.7,1.2,4.1,0,.3,0,.5,0,.8-.1,2.6,0,5.4,0,8.3.1,3.3.2,6.7,0,10-.3,4.6-3.6,8.6-8,9.6-.9.2-1.7.4-2.4.5-1.3.2-2,.4-3.1.9-3.5,1.9-5.4,5.4-5.2,9.3.2,3.9,2.4,7.2,6,8.8.6.3,1.4.4,2.3.6,2.7.5,7.3,1.5,9.5,6.8.4,1.1.7,2.2.8,3.3,0,.2,0,.5,0,.7-.1,2.6,0,5.4,0,8.3,0,3.3.2,6.6,0,9.9-.5,6.7-5.5,11.2-12.5,11.2Z");
+        } else if (symbolInfo.info.includes('012')) {
+            baseArtworkSize = 90;
+            shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            shape.setAttribute('d', "M103,170c-4.8,0-8.6-2.1-10.5-5.7-.2-.3-.4-.6-.6-1s0,0,0-.1c-.6-1.4-1-2.7-1.2-4.1,0-.3,0-.5,0-.8.1-2.6,0-5.4,0-8.3-.1-3.3-.2-6.7,0-10,.3-4.6,3.6-8.6,8-9.6.9-.2,1.7-.4,2.4-.5,1.3-.2,2-.4,3.1-.9,3.5-1.9,5.4-5.4,5.2-9.3-.2-3.9-2.4-7.2-6-8.8-.6-.3-1.4-.4-2.3-.6-2.7-.5-7.3-1.5-9.5-6.8-.4-1.1-.7-2.2-.8-3.3,0-.2,0-.5,0-.7.1-2.6,0-5.4,0-8.3,0-3.3-.2-6.6,0-9.9.5-6.7,5.5-11.2,12.5-11.2s.7,0,1.1,0c12.6.8,24.2,6.7,32.7,16.6,9,10.4,13.5,24.2,12.3,37.8-2.1,24.5-22.2,44.5-45.6,45.6-.3,0-.5,0-.8,0Z");
+        } else if (symbolInfo.info.includes('013')) {
+            baseArtworkSize = 90;
+            shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            shape.setAttribute('d', "M120.1,170c-11.5,0-21.9-6.2-27.3-16.2-7.6-14.1-1.7-27.3,3.6-39,1.2-2.7,2.3-5.2,3.3-7.7,0,0,0-.2.1-.3l15.5-33.7c.2-.6.6-1.2,1.1-1.7,1-1,2.3-1.5,3.5-1.5s2,.3,2.8.9c.5.3.9.7,1.2,1.1.5.6.8,1.3,1.1,1.9,5.1,10.8,10.2,22,15,32.8l.9,1.9c2.8,6.2,5.6,12.5,7.7,18.9,3.7,10.9,2.5,20.8-3.6,29.4-5.8,8.2-14.9,13-25,13Z");
+        } else if (symbolInfo.info.includes('014')) {
+            baseArtworkSize = 90;
+            shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            shape.setAttribute('d', "M120,170c-1,0-2-.3-2.8-.9-.5-.3-.9-.7-1.2-1.1-.5-.6-.8-1.3-1.1-2-5.1-10.8-10.2-22-15-32.8l-.9-1.9c-2.8-6.2-5.6-12.5-7.7-18.9-3.7-10.9-2.5-20.8,3.6-29.4,5.8-8.2,14.9-13,25-13s21.9,6.2,27.3,16.2c7.6,14.1,1.7,27.3-3.6,39-1.2,2.7-2.3,5.2-3.3,7.7,0,0,0,.2-.1.3l-15.5,33.7c-.2.6-.6,1.2-1.1,1.7-1,1-2.3,1.5-3.6,1.5Z");
+        } else if (symbolInfo.info.includes('015')) {
+            baseArtworkSize = 90;
+            shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            shape.setAttribute('d', "M139.6,150.8c-8.8,0-16.9-3.7-24.8-7.2-2.7-1.2-5.2-2.3-7.7-3.3,0,0-.2,0-.3-.1l-33.7-15.5c-.6-.2-1.2-.6-1.7-1.1h0c-1.7-1.7-2-4.4-.6-6.4.4-.6.9-1,1.4-1.4.6-.4,1.1-.6,1.7-.9,10.8-5.1,22-10.2,32.8-15l1.9-.9c6.2-2.8,12.5-5.6,18.9-7.7,4.1-1.4,8.1-2.1,11.9-2.1,6.3,0,12.2,1.9,17.5,5.6,8.7,6.1,13.5,16.2,12.9,26.9-.6,10.8-6.7,20.3-16.2,25.4-4.4,2.4-9.2,3.6-14.2,3.6Z");
+        } else {
+            baseArtworkSize = 240;
+            shape = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            shape.setAttribute('x', '20');
+            shape.setAttribute('y', '20');
+            shape.setAttribute('width', '200');
+            shape.setAttribute('height', '200');
+        }
+        
+        const scale = size / baseArtworkSize;
+        g.setAttribute('transform', `scale(${scale}) translate(-120, -120)`);
+
+        shape.setAttribute('fill', symbolInfo.symbolFill);
+        shape.setAttribute('stroke', symbolInfo.symbolStroke);
+        shape.setAttribute('stroke-width', strokeWidth);
+        g.appendChild(shape);
+        return g;
+    }
+
+    function findConnectedComponents(points, maxDist) {
+        const adj = new Map();
+        points.forEach((_, i) => adj.set(i, []));
+        
+        for (let i = 0; i < points.length; i++) {
+            for (let j = i + 1; j < points.length; j++) {
+                const dist = Math.sqrt(Math.pow(points[i].x - points[j].x, 2) + Math.pow(points[i].y - points[j].y, 2));
+                if (dist <= maxDist * 2) {
+                    adj.get(i).push(j);
+                    adj.get(j).push(i);
+                }
+            }
+        }
+        
+        const visited = new Set();
+        const components = [];
+        for (let i = 0; i < points.length; i++) {
+            if (!visited.has(i)) {
+                const component = [];
+                const stack = [i];
+                visited.add(i);
+                while (stack.length > 0) {
+                    const u = stack.pop();
+                    component.push(points[u]);
+                    for (const v of adj.get(u)) {
+                        if (!visited.has(v)) {
+                            visited.add(v);
+                            stack.push(v);
+                        }
+                    }
+                }
+                components.push(component);
+            }
+        }
+        return components;
+    }
+    
+    function getConvexHull(points) {
+        if (points.length <= 2) return points;
+        points.sort((a, b) => a.x - b.x || a.y - b.y);
+        const cross = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+        
+        const lower = [];
+        for (const p of points) {
+            while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) {
+                lower.pop();
+            }
+            lower.push(p);
+        }
+        
+        const upper = [];
+        for (let i = points.length - 1; i >= 0; i--) {
+            const p = points[i];
+            while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) {
+                upper.pop();
+            }
+            upper.push(p);
+        }
+        
+        return lower.slice(0, -1).concat(upper.slice(0, -1));
+    }
+
+    function downloadSvg() {
+        const svgEl = document.querySelector('#svgPreview svg');
+        if (!svgEl) {
+            console.error('プレビューがありません。');
+            return;
+        }
+
+        const englishTitleText = state.titles.find(t => t.id === 'english')?.text || 'Untitled';
+        const formattedTitle = englishTitleText
+            .replace(/[^a-zA-Z\s]/g, '')
+            .split(' ')
+            .filter(word => word)
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join('');
+        
+        const filename = `MapOfNivkhLanguage-${formattedTitle}.svg`;
+
+        const serializer = new XMLSerializer();
+        let source = serializer.serializeToString(svgEl);
+        source = '<?xml version="1.0" standalone="no"?>\r\n' + source;
+        const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(source);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    init();
+});
+</script>
+
+</body>
+</html>
